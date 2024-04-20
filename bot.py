@@ -153,10 +153,9 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 # Set counter
 @bot.command(description='Set the current counter of current channel.')
 @commands.has_permissions(administrator=True)
-async def set_counter(ctx, count):
+async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if await is_channel_allowed(ctx):
-        current_count, last_user_id = get_current_count(ctx.channel.id)
-        update_count(ctx.channel.id, count, 0)
+        update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
         await ctx.send(f'Count set to `{count}`')
 
 # Bot starts running here
