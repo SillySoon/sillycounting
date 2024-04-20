@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -20,6 +21,16 @@ open(CHANNELS_FILE, 'a').close()  # Ensure the file exists
 
 POSITIVE_EMOJI = '<:positive:1203089362833768468>'
 NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
+
+# Setup basic configuration for logging
+logging.basicConfig(level=logging.INFO, filename='bot_log.log', filemode='a',
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Now you can use the logging
+logger = logging.getLogger(__name__)
+
+# Example of using logger
+logger.info("Bot is starting up...")
 
 
 def update_count(channel_id, new_count, user_id):
@@ -61,7 +72,8 @@ async def is_channel_allowed(message):
 # Event listener for when the bot is ready
 @bot.event
 async def on_ready():
-    print(f'Logged on as {bot.user}!')
+    print("Bot is ready.")
+    logger.info(f'Logged on as {bot.user}!')
     update_status.start()
 
 
@@ -73,22 +85,35 @@ async def update_status():
 
 # Error handler for commands
 @bot.event
-async def on_command_error(ctx, exception):
-    if isinstance(exception, commands.CommandNotFound):
-        await ctx.send("```Command not recognized.```")
-    elif isinstance(exception, commands.MissingPermissions):
-        await ctx.send("```You do not have permission to execute this command.```")
-    elif isinstance(exception, commands.CheckFailure):
-        await ctx.send("```This command cannot be used in this channel.```")
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not recognized.")
+    elif isinstance(error, commands.MissingPermissions):
+        await ctx.send("You do not have permission to execute this command.")
+    elif isinstance(error, commands.CheckFailure):
+        await ctx.send("This command cannot be used in this channel.")
     else:
-        print(f"```Unhandled exception: {exception}```")
+        logger.error(f"Unhandled exception: {error}")
+        await ctx.send("An unexpected error occurred.")
+        raise error  # Optionally re-raise the error if you want it to propagate
 
 
 # Error handling general
 @bot.event
-async def on_error(ctx, event_method, *args, **kwargs):
-    print(f'An error occurred: {event_method}')
-    ctx.send(f"```An error occurred: {event_method}```")
+async def on_error(event_method, *args, **kwargs):
+    logger.error(f'```An error occurred in {event_method}```')
+    # Extracting the channel from args if possible
+    if args:
+        message = args[0]  # Assuming that the first arg is the message
+        if isinstance(message, discord.Message):
+            channel = message.channel
+            try:
+                await channel.send("```An unexpected error occurred. Please contact the administrator.```")
+            except discord.DiscordException:
+                pass  # In case the bot doesn't have permission to send messages in the channel
+    # Log to console or a file if necessary
+    logger.error(f"Error in {event_method}: {args} {kwargs}")  # Make sure to set up a logger
+
 
 
 @bot.event
