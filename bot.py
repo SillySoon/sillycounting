@@ -150,5 +150,14 @@ async def delete_channel(ctx, channel: discord.TextChannel):
     await ctx.send(f'Channel {channel.name} removed!')
 
 
+# Set counter
+@bot.command(description='Set the current counter of current channel.')
+@commands.has_permissions(administrator=True)
+async def set_counter(ctx, count):
+    if await is_channel_allowed(ctx):
+        current_count, last_user_id = get_current_count(ctx.channel.id)
+        update_count(ctx.channel.id, count, 0)
+        await ctx.send(f'Count set to `{count}`')
+
 # Bot starts running here
 bot.run(discord_token)
