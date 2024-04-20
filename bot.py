@@ -23,7 +23,7 @@ POSITIVE_EMOJI = '<:positive:1203089362833768468>'
 NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
 
 
-def update_count(channel_id, new_count):
+def update_count(channel_id, new_count, user_id):
     """Update the count in the file for a given channel."""
     with open(CHANNELS_FILE, 'r+') as file:
         lines = file.readlines()
@@ -31,25 +31,25 @@ def update_count(channel_id, new_count):
         file.truncate()
         updated = False
         for line in lines:
-            cid, count = line.strip().split(':')
+            cid, count, last_user_id = line.strip().split(':')
             if cid == str(channel_id):
-                file.write(f"{cid}:{new_count}\n")
+                file.write(f"{cid}:{new_count}:{user_id}\n")
                 updated = True
             else:
                 file.write(line)
         if not updated:
-            file.write(f"{channel_id}:{new_count}\n")
+            file.write(f"{channel_id}:{new_count}:{user_id}\n")
 
 
 def get_current_count(channel_id):
-    """Retrieve the current count for a given channel from the file."""
+    """Retrieve the current count and last user ID for a given channel from the file."""
     with open(CHANNELS_FILE, 'r') as file:
         lines = file.readlines()
     for line in lines:
-        cid, count = line.strip().split(':')
+        cid, count, last_user_id = line.strip().split(':')
         if cid == str(channel_id):
-            return int(count)
-    return 0  # Default to 0 if not found
+            return int(count), last_user_id
+    return 0, None  # Default to 0 and None if not found
 
 
 async def is_channel_allowed(message):
@@ -86,38 +86,29 @@ async def on_error(self, event_method, *args, **kwargs):
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user:
-        return
-
-    print(f"Received message from {message.author}: '{message.content}' in {message.channel.name}")
-
-    if not message.content.isdigit():
-        print("Message is not a digit.")
+    if message.author == bot.user or not message.content.isdigit():
         await bot.process_commands(message)
         return
 
-    allowed = await is_channel_allowed(message)
-    print(f"Is channel allowed? {'Yes' if allowed else 'No'}")
-
-    if allowed:
-        current_count = get_current_count(message.channel.id)
-        print(f"Current count is {current_count}. Message is {message.content}.")
+    if await is_channel_allowed(message):
+        current_count, last_user_id = get_current_count(message.channel.id)
 
         try:
             message_number = int(message.content)
-            if message_number == current_count + 1:
-                update_count(message.channel.id, message_number)
-                print(f"Updated count to {message_number}. Adding ✅ reaction.")
+            if message_number == current_count + 1 and str(message.author.id) != last_user_id:
+                update_count(message.channel.id, message_number, message.author.id)
                 await message.add_reaction(POSITIVE_EMOJI)
             else:
-
-                update_count(message.channel.id, 0)
-                print(f"Message number {message_number} does not follow {current_count + 1}. Adding ❌ reaction.")
-                await message.add_reaction(NEGATIVE_EMOJI)
-                await message.reply(f"You broke the counting! The counting has been reset. Start from 1 again!")
+                if str(message.author.id) == last_user_id:
+                    update_count(message.channel.id, 0, 0)
+                    await message.add_reaction(NEGATIVE_EMOJI)
+                    await message.reply("You can't count twice in a row! Starting from `1` again.")
+                else:
+                    update_count(message.channel.id, 0, 0)
+                    await message.add_reaction(NEGATIVE_EMOJI)
+                    await message.reply(f"The next number should be `{current_count + 1}`. Starting from `1` again.")
 
         except ValueError:
-            print("Failed to parse message content as integer.")
             pass  # Ignore messages that are not numbers
 
     await bot.process_commands(message)
