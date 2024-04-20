@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import check
 import os
 from dotenv import load_dotenv
@@ -63,6 +63,13 @@ async def is_channel_allowed(message):
 @bot.event
 async def on_ready():
     print(f'Logged on as {bot.user}!')
+    update_status.start()
+
+
+@tasks.loop(minutes=30)
+async def update_status():
+    activity = discord.Game(name=f"Counting on {len(bot.guilds)} Servers")
+    await bot.change_presence(activity=activity, status=discord.Status.online)
 
 
 # Error handler for commands
