@@ -18,8 +18,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 CHANNELS_FILE = 'channels_data.txt'
 open(CHANNELS_FILE, 'a').close()  # Ensure the file exists
 
-POSITIVE_EMOJI = '<:Positiv:1231198167710695457>'
-NEGATIVE_EMOJI = '<:Negativ:1231198166779428904>'
+POSITIVE_EMOJI = '<:positive:1203089362833768468>'
+NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
 
 
 def update_count(channel_id, new_count, user_id):
@@ -81,13 +81,14 @@ async def on_command_error(ctx, exception):
     elif isinstance(exception, commands.CheckFailure):
         await ctx.send("```This command cannot be used in this channel.```")
     else:
-        print(f"Unhandled exception: {exception}")
+        print(f"```Unhandled exception: {exception}```")
 
 
 # Error handling general
 @bot.event
-async def on_error(event_method, *args, **kwargs):
+async def on_error(ctx, event_method, *args, **kwargs):
     print(f'An error occurred: {event_method}')
+    ctx.send(f"```An error occurred: {event_method}```")
 
 
 @bot.event
@@ -155,7 +156,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if await is_channel_allowed(ctx):
         update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
-        await ctx.send(f'Count set to `{count}`')
+        await ctx.send(f'```Count set to {count}```')
 
 # Bot starts running here
 bot.run(discord_token)
