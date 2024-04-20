@@ -18,8 +18,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 CHANNELS_FILE = 'channels_data.txt'
 open(CHANNELS_FILE, 'a').close()  # Ensure the file exists
 
-POSITIVE_EMOJI = '<:positive:1203089362833768468>'
-NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
+POSITIVE_EMOJI = '<:Positiv:1231198167710695457>'
+NEGATIVE_EMOJI = '<:Negativ:1231198166779428904>'
 
 
 def update_count(channel_id, new_count, user_id):
@@ -75,18 +75,18 @@ async def update_status():
 @bot.event
 async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CommandNotFound):
-        await ctx.send("Command not recognized.")
+        await ctx.send("```Command not recognized.```")
     elif isinstance(exception, commands.MissingPermissions):
-        await ctx.send("You do not have permission to execute this command.")
+        await ctx.send("```You do not have permission to execute this command.```")
     elif isinstance(exception, commands.CheckFailure):
-        await ctx.send("This command cannot be used in this channel.")
+        await ctx.send("```This command cannot be used in this channel.```")
     else:
         print(f"Unhandled exception: {exception}")
 
 
 # Error handling general
 @bot.event
-async def on_error(event_method):
+async def on_error(event_method, *args, **kwargs):
     print(f'An error occurred: {event_method}')
 
 
@@ -108,11 +108,11 @@ async def on_message(message):
                 if str(message.author.id) == last_user_id:
                     update_count(message.channel.id, 0, 0)
                     await message.add_reaction(NEGATIVE_EMOJI)
-                    await message.reply("You can't count twice in a row! Starting from `1` again.")
+                    await message.reply("```You can't count twice in a row! Starting from 1 again.```")
                 else:
                     update_count(message.channel.id, 0, 0)
                     await message.add_reaction(NEGATIVE_EMOJI)
-                    await message.reply(f"The next number should be `{current_count + 1}`. Starting from `1` again.")
+                    await message.reply(f"```The Number should be {current_count + 1}. Starting from 1 again.```")
 
         except ValueError:
             pass  # Ignore messages that are not numbers
@@ -125,11 +125,11 @@ async def on_message(message):
 @commands.has_permissions(administrator=True)
 async def add_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.send(f'Error: {channel.name} is not part of this server.')
+        await ctx.send(f'```Error: {channel.name} is not part of this server.```')
         return
 
     update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
-    await ctx.send(f'Channel {channel.name} added!')
+    await ctx.send(f'```Channel {channel.name} added!```')
 
 
 # Command to delete a channel
@@ -137,7 +137,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def delete_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.send(f'Error: {channel.name} is not part of this server.')
+        await ctx.send(f'```Error: {channel.name} is not part of this server.```')
         return
 
     with open(CHANNELS_FILE, 'r') as file:
@@ -146,7 +146,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
         for line in lines:
             if line.strip().split(':')[0] != str(channel.id):
                 file.write(line)
-    await ctx.send(f'Channel {channel.name} removed!')
+    await ctx.send(f'```Channel {channel.name} removed!```')
 
 
 # Set counter
