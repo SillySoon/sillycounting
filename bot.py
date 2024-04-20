@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-from discord.ext.commands import check
 import os
 from dotenv import load_dotenv
 
@@ -87,7 +86,7 @@ async def on_command_error(ctx, exception):
 
 # Error handling general
 @bot.event
-async def on_error(self, event_method, *args, **kwargs):
+async def on_error(event_method):
     print(f'An error occurred: {event_method}')
 
 
@@ -129,7 +128,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
         await ctx.send(f'Error: {channel.name} is not part of this server.')
         return
 
-    update_count(channel.id, 0)  # Initialize the count at 0 when adding a new channel
+    update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
     await ctx.send(f'Channel {channel.name} added!')
 
 
