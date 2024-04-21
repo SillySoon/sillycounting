@@ -1,9 +1,11 @@
 import discord
-from discord.ext import commands, tasks
-import os
-from dotenv import load_dotenv
 import logging
 import sqlite3
+import os
+from discord.ext import commands, tasks
+from dotenv import load_dotenv
+from sqlite3 import Connection
+from queue import Queue
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -33,21 +35,36 @@ logger = logging.getLogger(__name__)
 logger.info("Bot is starting up...")
 
 
-def create_connection(db_file):
-    """Create a database connection to a SQLite database specified by db_file."""
-    try:
-        conn = sqlite3.connect(db_file)
-        logger.info(f"Connected to SQLite database: {db_file}")
-        return conn
-    except sqlite3.Error as e:
-        logger.error(f"Failed to connect to database due to: {e}")
-        return None
+class SQLiteConnectionPool:
+    def __init__(self, db_file, max_connections=5):
+        self.db_file = db_file
+        self.pool = Queue(max_connections)
+        for _ in range(max_connections):
+            self.pool.put(sqlite3.connect(db_file, check_same_thread=False))
+
+    def get_connection(self) -> Connection:
+        return self.pool.get()
+
+    def release_connection(self, conn: Connection):
+        self.pool.put(conn)
+
+
+connection_pool = SQLiteConnectionPool(database_path)
+
+
+def create_connection():
+    """ Get a database connection from the pool."""
+    return connection_pool.get_connection()
+
+
+def close_connection(conn):
+    """ Release a database connection back to the pool."""
+    connection_pool.release_connection(conn)
 
 
 def setup_database():
     """Set up the database and tables."""
-    database = database_path
-    connection = create_connection(database)
+    connection = create_connection()
     if connection is None:
         logger.error("No database connection could be established.")
         return
@@ -68,13 +85,12 @@ def setup_database():
     except sqlite3.Error as e:
         logger.error(f"Failed to create table: {e}")
     finally:
-        connection.close()
+        close_connection(connection)
 
 
 def update_count(channel_id, new_count, user_id):
     """Update the count in the database for a given channel."""
-    database = "bot_database.db"
-    conn = create_connection(database)
+    conn = create_connection()
     sql = ''' REPLACE INTO channels(channel_id, count, last_user_id)
               VALUES(?,?,?) '''
     try:
@@ -84,13 +100,12 @@ def update_count(channel_id, new_count, user_id):
     except sqlite3.Error as e:
         print(e)
     finally:
-        conn.close()
+        close_connection(conn)
 
 
 def get_current_count(channel_id):
     """Retrieve the current count and last user ID for a given channel from the database."""
-    database = "bot_database.db"
-    conn = create_connection(database)
+    conn = create_connection()
     sql = ''' SELECT count, last_user_id FROM channels WHERE channel_id = ? '''
     try:
         cur = conn.cursor()
@@ -101,14 +116,13 @@ def get_current_count(channel_id):
     except sqlite3.Error as e:
         print(e)
     finally:
-        conn.close()
+        close_connection(conn)
     return 0, None  # Default to 0 and None if not found
 
 
 async def is_channel_allowed(message):
     """Check if the message channel is in the allowed channels list using the database."""
-    database = "bot_database.db"
-    conn = create_connection(database)
+    conn = create_connection()
     if conn is None:
         logger.error("Failed to connect to database when checking channel allowance.")
         return False
@@ -121,7 +135,7 @@ async def is_channel_allowed(message):
         logger.error(f"Database error when checking if channel is allowed: {e}")
         return False
     finally:
-        conn.close()
+        close_connection(conn)
 
 
 # Event listener for when the bot is ready
@@ -165,7 +179,7 @@ async def on_error(event_method, *args, **kwargs):
         if isinstance(message, discord.Message):
             channel = message.channel
             try:
-                await channel.reply("```An unexpected error occurred. Please contact the administrator.```")
+                await channel.send("```An unexpected error occurred. Please contact the administrator.```")
             except discord.DiscordException:
                 pass  # In case the bot doesn't have permission to send messages in the channel
     # Log to console or a file if necessary
@@ -210,8 +224,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
         await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
         return
 
-    database = "bot_database.db"
-    conn = create_connection(database)
+    conn = create_connection()
     if conn is None:
         await ctx.reply("```Database connection failed.```")
         return
@@ -226,7 +239,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
             await ctx.reply(f'```Channel {channel.name} added!```', ephemeral=True)
             await channel.send(f'```Counting activated! Start counting by typing 1.```')
     finally:
-        conn.close()
+        close_connection(conn)
 
 
 # Command to delete a channel
@@ -237,8 +250,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
         await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
         return
 
-    database = "bot_database.db"
-    conn = create_connection(database)
+    conn = create_connection()
     if conn is None:
         await ctx.reply("Database connection failed.", ephemeral=True)
         return
@@ -253,7 +265,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
             conn.commit()
             await ctx.reply(f'```Channel {channel.name} removed!```', ephemeral=True)
     finally:
-        conn.close()
+        close_connection(conn)
 
 
 # Set counter
