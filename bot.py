@@ -10,12 +10,14 @@ load_dotenv()
 
 # Accessing the environment variables
 discord_token = os.getenv('DISCORD_TOKEN')
+command_prefix = os.getenv('COMMAND_PREFIX')
+database_path = os.getenv('DATABASE_PATH')
 
 # Initialize the Bot with command prefix and intents
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=command_prefix, intents=intents)
 
 POSITIVE_EMOJI = '<:positive:1203089362833768468>'
 NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
@@ -44,7 +46,7 @@ def create_connection(db_file):
 
 def setup_database():
     """Set up the database and tables."""
-    database = "bot_database.db"
+    database = database_path
     connection = create_connection(database)
     if connection is None:
         logger.error("No database connection could be established.")
