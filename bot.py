@@ -144,28 +144,28 @@ async def update_status():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("Command not recognized.")
+        await ctx.reply("Command not recognized.", ephemeral=True)
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("You do not have permission to execute this command.")
+        await ctx.reply("You do not have permission to execute this command.", ephemeral=True)
     elif isinstance(error, commands.CheckFailure):
-        await ctx.send("This command cannot be used in this channel.")
+        await ctx.reply("This command cannot be used in this channel.", ephemeral=True)
     else:
         logger.error(f"Unhandled exception: {error}")
-        await ctx.send("An unexpected error occurred.")
+        await ctx.reply("An unexpected error occurred.", ephemeral=True)
         raise error  # Optionally re-raise the error if you want it to propagate
 
 
 # Error handling general
 @bot.event
 async def on_error(event_method, *args, **kwargs):
-    logger.error(f'```An error occurred in {event_method}```')
+    logger.error(f'An error occurred in {event_method}')
     # Extracting the channel from args if possible
     if args:
         message = args[0]  # Assuming that the first arg is the message
         if isinstance(message, discord.Message):
             channel = message.channel
             try:
-                await channel.send("```An unexpected error occurred. Please contact the administrator.```")
+                await channel.reply("```An unexpected error occurred. Please contact the administrator.```")
             except discord.DiscordException:
                 pass  # In case the bot doesn't have permission to send messages in the channel
     # Log to console or a file if necessary
@@ -207,23 +207,23 @@ async def on_message(message):
 @commands.has_permissions(administrator=True)
 async def add_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.send(f'```Error: {channel.name} is not part of this server.```')
+        await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
         return
 
     database = "bot_database.db"
     conn = create_connection(database)
     if conn is None:
-        await ctx.send("Database connection failed.")
+        await ctx.reply("```Database connection failed.```")
         return
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if cursor.fetchone():
-            await ctx.send(f'```Error: Channel {channel.name} is already added.```')
+            await ctx.reply(f'```Error: Channel {channel.name} is already added.```', ephemeral=True)
         else:
             update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
-            await ctx.send(f'```Channel {channel.name} added!```')
+            await ctx.reply(f'```Channel {channel.name} added!```', ephemeral=True)
             await channel.send(f'```Counting activated! Start counting by typing 1.```')
     finally:
         conn.close()
@@ -234,24 +234,24 @@ async def add_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def delete_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.send(f'```Error: {channel.name} is not part of this server.```')
+        await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
         return
 
     database = "bot_database.db"
     conn = create_connection(database)
     if conn is None:
-        await ctx.send("Database connection failed.")
+        await ctx.reply("Database connection failed.", ephemeral=True)
         return
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if not cursor.fetchone():
-            await ctx.send(f'```Error: Channel {channel.name} not activated.```')
+            await ctx.reply(f'```Error: Channel {channel.name} not activated.```', ephemeral=True)
         else:
             cursor.execute("DELETE FROM channels WHERE channel_id = ?", (str(channel.id),))
             conn.commit()
-            await ctx.send(f'```Channel {channel.name} removed!```')
+            await ctx.reply(f'```Channel {channel.name} removed!```', ephemeral=True)
     finally:
         conn.close()
 
@@ -261,11 +261,11 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if not await is_channel_allowed(ctx.message):
-        await ctx.send("This channel is not activated for counting.")
+        await ctx.reply("This channel is not activated for counting.", ephemeral=True)
         return
 
     update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
-    await ctx.send(f'```Count set to {count}```')
+    await ctx.reply(f'```Count set to {count}```')
 
 
 # Bot starts running here
