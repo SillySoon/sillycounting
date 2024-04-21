@@ -115,7 +115,6 @@ async def on_error(event_method, *args, **kwargs):
     logger.error(f"Error in {event_method}: {args} {kwargs}")  # Make sure to set up a logger
 
 
-
 @bot.event
 async def on_message(message):
     if message.author == bot.user or not message.content.isdigit():
@@ -154,8 +153,15 @@ async def add_channel(ctx, channel: discord.TextChannel):
         await ctx.send(f'```Error: {channel.name} is not part of this server.```')
         return
 
+    with open(CHANNELS_FILE, 'r') as file:
+        existing_channels = [line.strip().split(':')[0] for line in file.readlines()]
+    if str(channel.id) in existing_channels:
+        await ctx.send(f'```Error: Channel {channel.name} is already added.```')
+        return
+
     update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
     await ctx.send(f'```Channel {channel.name} added!```')
+    await channel.send(f'```Counting activated! Start counting by typing 1.```')
 
 
 # Command to delete a channel
@@ -168,10 +174,17 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 
     with open(CHANNELS_FILE, 'r') as file:
         lines = file.readlines()
+        channel_ids = [line.strip().split(':')[0] for line in lines]
+
+    if str(channel.id) not in channel_ids:
+        await ctx.send(f'```Error: Channel {channel.name} not activated.```')
+        return
+
     with open(CHANNELS_FILE, 'w') as file:
         for line in lines:
             if line.strip().split(':')[0] != str(channel.id):
                 file.write(line)
+
     await ctx.send(f'```Channel {channel.name} removed!```')
 
 
@@ -182,6 +195,7 @@ async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if await is_channel_allowed(ctx):
         update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
         await ctx.send(f'```Count set to {count}```')
+
 
 # Bot starts running here
 bot.run(discord_token)
