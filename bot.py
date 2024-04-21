@@ -158,14 +158,14 @@ async def update_status():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.reply("Command not recognized.", ephemeral=True)
+        await ctx.reply("```Command not recognized.```", ephemeral=True)
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.reply("You do not have permission to execute this command.", ephemeral=True)
+        await ctx.reply("```You do not have permission to execute this command.```", ephemeral=True)
     elif isinstance(error, commands.CheckFailure):
-        await ctx.reply("This command cannot be used in this channel.", ephemeral=True)
+        await ctx.reply("```This command cannot be used in this channel.```", ephemeral=True)
     else:
         logger.error(f"Unhandled exception: {error}")
-        await ctx.reply("An unexpected error occurred.", ephemeral=True)
+        await ctx.reply("```An unexpected error occurred.```", ephemeral=True)
         raise error  # Optionally re-raise the error if you want it to propagate
 
 
@@ -252,7 +252,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 
     conn = create_connection()
     if conn is None:
-        await ctx.reply("Database connection failed.", ephemeral=True)
+        await ctx.reply("```Database connection failed.```", ephemeral=True)
         return
 
     try:
@@ -273,7 +273,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if not await is_channel_allowed(ctx.message):
-        await ctx.reply("This channel is not activated for counting.", ephemeral=True)
+        await ctx.reply("```This channel is not activated for counting.```", ephemeral=True)
         return
 
     update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
