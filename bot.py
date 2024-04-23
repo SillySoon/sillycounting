@@ -21,8 +21,8 @@ intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix=command_prefix, intents=intents)
 
-POSITIVE_EMOJI = '<:positive:1203089362833768468>'
-NEGATIVE_EMOJI = '<:negative:1203089360644476938>'
+POSITIVE_EMOJI = '<:positive:1232460365183582239>'
+NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 
 # Setup basic configuration for logging
 logging.basicConfig(level=logging.INFO, filename='bot_log.log', filemode='a',
@@ -150,7 +150,7 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def update_status():
-    activity = discord.Game(name=f"Counting on {len(bot.guilds)} Servers")
+    activity = discord.Game(name=f'{command_prefix}help')
     await bot.change_presence(activity=activity, status=discord.Status.online)
 
 
