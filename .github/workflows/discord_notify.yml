@@ -20,5 +20,5 @@ jobs:
         COMMIT_DESCRIPTION=$(git log -1 --pretty=format:'%b')
         curl -H "Content-Type: application/json" \
         -X POST \
-        -d "{\"username\": \"GitHub Action\", \"embeds\": [{\"title\": \"New Push to Main: $COMMIT_NAME\", \"description\": \"Commit Description: $COMMIT_DESCRIPTION\", \"color\": 15258703}]}" \
+        -d "{\"username\": \"Github Changelogs\", \"embeds\": [{\"title\": \"New Push to Main: $COMMIT_NAME\", \"description\": \"Commit Description: $COMMIT_DESCRIPTION\", \"color\": 1777446}]}" \
         $DISCORD_WEBHOOK
