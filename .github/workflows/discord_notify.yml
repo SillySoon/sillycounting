@@ -1,0 +1,24 @@
+name: Discord Notification on Push
+
+on:
+  push:
+    branches:
+      - main  # Set this to your target branch, if it's different
+
+jobs:
+  notification:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Send Discord notification
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      run: |
+        COMMIT_NAME=$(git log -1 --pretty=format:'%s')
+        COMMIT_DESCRIPTION=$(git log -1 --pretty=format:'%b')
+        curl -H "Content-Type: application/json" \
+        -X POST \
+        -d "{\"username\": \"GitHub Action\", \"embeds\": [{\"title\": \"New Push to Main: $COMMIT_NAME\", \"description\": \"Commit Description: $COMMIT_DESCRIPTION\", \"color\": 15258703}]}" \
+        $DISCORD_WEBHOOK
