@@ -2,8 +2,6 @@ name: Discord Notification on Push
 
 on:
   push:
-    branches:
-      - main  # Set this to your target branch, if it's different
 
 jobs:
   notification:
@@ -18,7 +16,8 @@ jobs:
       run: |
         COMMIT_NAME=$(git log -1 --pretty=format:'%s')
         COMMIT_DESCRIPTION=$(git log -1 --pretty=format:'%b')
+        BRANCH_NAME=${GITHUB_REF#refs/heads/}
         curl -H "Content-Type: application/json" \
         -X POST \
-        -d "{\"username\": \"Github Changelogs\", \"embeds\": [{\"title\": \"New Push to Main: $COMMIT_NAME\", \"description\": \"Commit Description: $COMMIT_DESCRIPTION\", \"color\": 1777446}]}" \
+        -d "{\"username\": \"Github Changelogs\", \"embeds\": [{\"title\": \"New Push to $BRANCH_NAME: $COMMIT_NAME\", \"description\": \"Commit Description: $COMMIT_DESCRIPTION\", \"color\": 1777446}]}" \
         $DISCORD_WEBHOOK
