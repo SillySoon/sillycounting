@@ -90,7 +90,12 @@ def setup_database():
         for column in required_columns:
             logger.info(f"Checking for column {column}")
             if column not in columns:
-                cursor.execute(f"ALTER TABLE channels ADD COLUMN {column}")
+                if column == "highscore":
+                    cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} INTEGER")
+                elif column == "count":
+                    cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} INTEGER")
+                else:
+                    cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} TEXT")
                 connection.commit()
                 logger.info(f"Column {column} added successfully.")
     except sqlite3.Error as e:
