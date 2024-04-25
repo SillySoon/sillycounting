@@ -261,6 +261,7 @@ async def on_message(message):
                 current_highscore = get_highscore(message.channel.id)
 
                 if current_count <= current_highscore:
+                    await message.channel.send(f"```Current highscore: {current_highscore}. Try to beat it!```")
                     return
                 await message.channel.send(f"```New highscore: {current_count}!```")
                 update_highscore(message.channel.id, current_count)
@@ -320,6 +321,29 @@ async def delete_channel(ctx, channel: discord.TextChannel):
             await ctx.reply(f'```Channel {channel.name} removed!```')
     finally:
         close_connection(conn)
+
+
+# Command to show the highscore
+@bot.command(description='Show the highscore of the current channel.')
+async def highscore(ctx):
+    if not await is_channel_allowed(ctx.message):
+        await ctx.reply("```This channel is not activated for counting.```")
+        return
+
+    current_highscore = get_highscore(ctx.channel.id)
+    await ctx.reply(f'```Current highscore: {current_highscore}```')
+
+
+# Command to reset the highscore
+@bot.command(description='Reset the highscore of the current channel.')
+@commands.has_permissions(administrator=True)
+async def reset_highscore(ctx):
+    if not await is_channel_allowed(ctx.message):
+        await ctx.reply("```This channel is not activated for counting.```")
+        return
+
+    update_highscore(ctx.channel.id, 0)
+    await ctx.reply("```Highscore reset.```")
 
 
 # Set counter
