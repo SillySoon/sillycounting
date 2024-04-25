@@ -158,14 +158,14 @@ async def update_status():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.reply("```Command not recognized.```", ephemeral=True)
+        await ctx.reply("```Command not recognized.```")
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.reply("```You do not have permission to execute this command.```", ephemeral=True)
+        await ctx.reply("```You do not have permission to execute this command.```")
     elif isinstance(error, commands.CheckFailure):
-        await ctx.reply("```This command cannot be used in this channel.```", ephemeral=True)
+        await ctx.reply("```This command cannot be used in this channel.```")
     else:
         logger.error(f"Unhandled exception: {error}")
-        await ctx.reply("```An unexpected error occurred.```", ephemeral=True)
+        await ctx.reply("```An unexpected error occurred.```")
         raise error  # Optionally re-raise the error if you want it to propagate
 
 
@@ -221,7 +221,7 @@ async def on_message(message):
 @commands.has_permissions(administrator=True)
 async def add_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
+        await ctx.reply(f'```Error: {channel.name} is not part of this server.```')
         return
 
     conn = create_connection()
@@ -233,10 +233,10 @@ async def add_channel(ctx, channel: discord.TextChannel):
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if cursor.fetchone():
-            await ctx.reply(f'```Error: Channel {channel.name} is already added.```', ephemeral=True)
+            await ctx.reply(f'```Error: Channel {channel.name} is already added.```')
         else:
             update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
-            await ctx.reply(f'```Channel {channel.name} added!```', ephemeral=True)
+            await ctx.reply(f'```Channel {channel.name} added!```')
             await channel.send(f'```Counting activated! Start counting by typing 1.```')
     finally:
         close_connection(conn)
@@ -247,23 +247,23 @@ async def add_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def delete_channel(ctx, channel: discord.TextChannel):
     if channel.guild.id != ctx.guild.id:
-        await ctx.reply(f'```Error: {channel.name} is not part of this server.```', ephemeral=True)
+        await ctx.reply(f'```Error: {channel.name} is not part of this server.```')
         return
 
     conn = create_connection()
     if conn is None:
-        await ctx.reply("```Database connection failed.```", ephemeral=True)
+        await ctx.reply("```Database connection failed.```")
         return
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if not cursor.fetchone():
-            await ctx.reply(f'```Error: Channel {channel.name} not activated.```', ephemeral=True)
+            await ctx.reply(f'```Error: Channel {channel.name} not activated.```')
         else:
             cursor.execute("DELETE FROM channels WHERE channel_id = ?", (str(channel.id),))
             conn.commit()
-            await ctx.reply(f'```Channel {channel.name} removed!```', ephemeral=True)
+            await ctx.reply(f'```Channel {channel.name} removed!```')
     finally:
         close_connection(conn)
 
@@ -273,7 +273,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
 @commands.has_permissions(administrator=True)
 async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if not await is_channel_allowed(ctx.message):
-        await ctx.reply("```This channel is not activated for counting.```", ephemeral=True)
+        await ctx.reply("```This channel is not activated for counting.```")
         return
 
     update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
