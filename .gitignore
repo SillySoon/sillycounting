@@ -146,6 +146,7 @@ cython_debug/
 
 # db file
 bot_database.db
+.idea
 
 # PyCharm
 #  JetBrains specific template is maintainted in a separate JetBrains.gitignore that can
