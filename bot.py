@@ -2,6 +2,7 @@ import discord
 import logging
 import sqlite3
 import os
+from logging.handlers import TimedRotatingFileHandler
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlite3 import Connection
@@ -25,14 +26,25 @@ POSITIVE_EMOJI = '<:positive:1232460365183582239>'
 NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 
 # Setup basic configuration for logging
-logging.basicConfig(level=logging.INFO, filename='bot_log.log', filemode='a',
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+os.makedirs('./logs', exist_ok=True)  # Ensure the directory for logs exists
 
-# Now you can use the logging
+# Setup handler for rotating logs daily
+log_handler = TimedRotatingFileHandler(
+    filename='./logs/log',  # Base file name
+    when='midnight',  # Rotate at midnight
+    interval=1,       # Every 1 day
+    backupCount=31     # Keep 1 month of logs
+)
+log_handler.setFormatter(logging.Formatter('%(levelname)s - %(asctime)s - %(message)s'))
+log_handler.setLevel(logging.INFO)
+
+# Setup the logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(log_handler)
 
-# Example of using logger
-logger.info("Bot is starting up...")
+# Use `logger` to log messages
+logger.info("[START] Bot is starting up...")
 
 
 class SQLiteConnectionPool:
@@ -66,10 +78,10 @@ def setup_database():
     """Set up the database and tables."""
     connection = create_connection()
     if connection is None:
-        logger.error("No database connection could be established.")
+        logger.error("[DATABASE] No database connection could be established.")
         return
     else:
-        logger.info("Database connection was established successfully.")
+        logger.info("[DATABASE] Database connection was established successfully.")
 
     try:
         cursor = connection.cursor()
@@ -81,14 +93,14 @@ def setup_database():
             )
         ''')
         connection.commit()
-        logger.info("Database table created successfully.")
+        logger.info("[DATABASE] Database table created successfully.")
 
         # Check if all columns exist
         cursor.execute("PRAGMA table_info(channels)")
         columns = [column[1] for column in cursor.fetchall()]
         required_columns = ["channel_id", "count", "last_user_id", "highscore"]
         for column in required_columns:
-            logger.info(f"Checking for column {column}")
+            logger.info(f"[DATABASE] Checking for column {column}")
             if column not in columns:
                 if column == "highscore":
                     cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} INTEGER")
@@ -97,15 +109,15 @@ def setup_database():
                 else:
                     cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} TEXT")
                 connection.commit()
-                logger.info(f"Column {column} added successfully.")
+                logger.info(f"[DATABASE] Column {column} added successfully.")
     except sqlite3.Error as e:
-        logger.error(f"Failed to create or alter table: {e}")
+        logger.error(f"[DATABASE] Failed to create or alter table: {e}")
     finally:
         close_connection(connection)
 
 
 def update_count(channel_id, new_count, user_id):
-    logger.info(f"{channel_id} requests: update count to {new_count} for user {user_id}")
+    logger.info(f"[BOT] {channel_id} requests: update count to {new_count} for user {user_id}")
     """Update the count in the database for a given channel."""
     conn = create_connection()
     sql = ''' UPDATE channels SET count = ?, last_user_id = ? WHERE channel_id = ? '''
@@ -120,7 +132,7 @@ def update_count(channel_id, new_count, user_id):
 
 
 def get_highscore(channel_id):
-    logger.info(f"{channel_id} requests: get highscore")
+    logger.info(f"[BOT] {channel_id} requests: get highscore")
     """Retrieve the highscore for a given channel from the database."""
     conn = create_connection()
     sql = ''' SELECT highscore FROM channels WHERE channel_id = ? '''
@@ -138,7 +150,7 @@ def get_highscore(channel_id):
 
 
 def update_highscore(channel_id, new_highscore):
-    logger.info(f"{channel_id} requests: update highscore to {new_highscore}")
+    logger.info(f"[BOT] {channel_id} requests: update highscore to {new_highscore}")
     conn = create_connection()
 
     """Update the highscore in the database for a given channel."""
@@ -155,7 +167,7 @@ def update_highscore(channel_id, new_highscore):
 
 
 def get_current_count(channel_id):
-    logger.info(f"{channel_id} requests: get current count")
+    logger.info(f"[BOT] {channel_id} requests: get current count")
     """Retrieve the current count and last user ID for a given channel from the database."""
     conn = create_connection()
     sql = ''' SELECT count, last_user_id FROM channels WHERE channel_id = ? '''
@@ -176,7 +188,7 @@ async def is_channel_allowed(message):
     """Check if the message channel is in the allowed channels list using the database."""
     conn = create_connection()
     if conn is None:
-        logger.error("Failed to connect to database when checking channel allowance.")
+        logger.error("[BOT] Failed to connect to database when checking channel allowance.")
         return False
 
     try:
@@ -184,7 +196,7 @@ async def is_channel_allowed(message):
         cursor.execute("SELECT 1 FROM channels WHERE channel_id = ?", (str(message.channel.id),))
         return cursor.fetchone() is not None
     except sqlite3.Error as e:
-        logger.error(f"Database error when checking if channel is allowed: {e}")
+        logger.error(f"[BOT] Database error when checking if channel is allowed: {e}")
         return False
     finally:
         close_connection(conn)
@@ -193,9 +205,9 @@ async def is_channel_allowed(message):
 # Event listener for when the bot is ready
 @bot.event
 async def on_ready():
-    logger.info("Bot is starting up and preparing database...")
+    logger.info("[BOT] Bot is starting up and preparing database...")
     setup_database()
-    logger.info(f'Logged on as {bot.user}!')
+    logger.info(f'[BOT] Logged on as {bot.user}!')
     update_status.start()
     print("Bot ready!")
 
@@ -244,8 +256,11 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
+    print(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
+
     if await is_channel_allowed(message):
         current_count, last_user_id = get_current_count(message.channel.id)
+        logger.info(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
 
         try:
             message_number = int(message.content)
@@ -289,6 +304,8 @@ async def add_channel(ctx, channel: discord.TextChannel):
         await ctx.reply("```Database connection failed.```")
         return
 
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
@@ -315,6 +332,8 @@ async def delete_channel(ctx, channel: discord.TextChannel):
         await ctx.reply("```Database connection failed.```")
         return
 
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
@@ -335,6 +354,8 @@ async def highscore(ctx):
         await ctx.reply("```This channel is not activated for counting.```")
         return
 
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+
     current_highscore = get_highscore(ctx.channel.id)
     await ctx.reply(f'```Current highscore: {current_highscore}```')
 
@@ -347,6 +368,8 @@ async def reset_highscore(ctx):
         await ctx.reply("```This channel is not activated for counting.```")
         return
 
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+
     update_highscore(ctx.channel.id, 0)
     await ctx.reply("```Highscore reset.```")
 
@@ -358,6 +381,8 @@ async def set_counter(ctx, count: int):  # Automatically handles type conversion
     if not await is_channel_allowed(ctx.message):
         await ctx.reply("```This channel is not activated for counting.```")
         return
+
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
 
     update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
     await ctx.reply(f'```Count set to {count}```')
