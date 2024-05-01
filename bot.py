@@ -126,6 +126,22 @@ def update_count(channel_id, new_count, user_id):
         cur.execute(sql, (new_count, user_id, channel_id))
         conn.commit()
     except sqlite3.Error as e:
+        logger.error(f"[BOT] Failed to update count: {e}")
+        print(e)
+    finally:
+        close_connection(conn)
+
+
+def add_channel_to_db(channel_id):
+    logger.info(f"[BOT] {channel_id} requests: add channel")
+    conn = create_connection()
+    sql = ''' INSERT INTO channels(channel_id, count, last_user_id, highscore) VALUES(?, 0, 0, 0) '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (channel_id,))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"[BOT] Failed to add channel: {e}")
         print(e)
     finally:
         close_connection(conn)
@@ -304,7 +320,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
         await ctx.reply("```Database connection failed.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.message.content}'")
 
     try:
         cursor = conn.cursor()
@@ -312,7 +328,7 @@ async def add_channel(ctx, channel: discord.TextChannel):
         if cursor.fetchone():
             await ctx.reply(f'```Error: Channel {channel.name} is already added.```')
         else:
-            update_count(channel.id, 0, 0)  # Initialize the count at 0 when adding a new channel
+            add_channel_to_db(str(channel.id))
             await ctx.reply(f'```Channel {channel.name} added!```')
             await channel.send(f'```Counting activated! Start counting by typing 1.```')
     finally:
@@ -332,7 +348,7 @@ async def delete_channel(ctx, channel: discord.TextChannel):
         await ctx.reply("```Database connection failed.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.message.content}'")
 
     try:
         cursor = conn.cursor()
