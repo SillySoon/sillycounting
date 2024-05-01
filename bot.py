@@ -1,9 +1,9 @@
-import discord
+import disnake
 import logging
 import sqlite3
 import os
 from logging.handlers import TimedRotatingFileHandler
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlite3 import Connection
 from queue import Queue
@@ -17,7 +17,7 @@ command_prefix = os.getenv('COMMAND_PREFIX')
 database_path = os.getenv('DATABASE_PATH')
 
 # Initialize the Bot with command prefix and intents
-intents = discord.Intents.default()
+intents = disnake.Intents.default()
 intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix=command_prefix, intents=intents)
@@ -230,8 +230,8 @@ async def on_ready():
 
 @tasks.loop(minutes=30)
 async def update_status():
-    activity = discord.Game(name=f'{command_prefix}help')
-    await bot.change_presence(activity=activity, status=discord.Status.online)
+    activity = disnake.Game(name=f'{command_prefix}help')
+    await bot.change_presence(activity=activity, status=disnake.Status.online)
 
 
 # Error handler for commands
@@ -256,11 +256,11 @@ async def on_error(event_method, *args, **kwargs):
     # Extracting the channel from args if possible
     if args:
         message = args[0]  # Assuming that the first arg is the message
-        if isinstance(message, discord.Message):
+        if isinstance(message, disnake.Message):
             channel = message.channel
             try:
                 await channel.send("```An unexpected error occurred. Please contact the administrator.```")
-            except discord.DiscordException:
+            except disnake.DiscordException:
                 pass  # In case the bot doesn't have permission to send messages in the channel
     # Log to console or a file if necessary
     logger.error(f"Error in {event_method}: {args} {kwargs}")  # Make sure to set up a logger
@@ -308,100 +308,100 @@ async def on_message(message):
 
 
 # Command to add a channel
-@bot.command(description='Add a channel to activate counting in.')
+@bot.slash_command(description='Add a channel to activate counting in.')
 @commands.has_permissions(administrator=True)
-async def add_channel(ctx, channel: discord.TextChannel):
-    if channel.guild.id != ctx.guild.id:
-        await ctx.reply(f'```Error: {channel.name} is not part of this server.```')
+async def add_channel(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
+    if channel.guild.id != interaction.guild.id:
+        await interaction.send(f'```Error: {channel.name} is not part of this server.```')
         return
 
     conn = create_connection()
     if conn is None:
-        await ctx.reply("```Database connection failed.```")
+        await interaction.send("```Database connection failed.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.message.content}'")
+    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if cursor.fetchone():
-            await ctx.reply(f'```Error: Channel {channel.name} is already added.```')
+            await interaction.send(f'```Error: Channel {channel.name} is already added.```')
         else:
             add_channel_to_db(str(channel.id))
-            await ctx.reply(f'```Channel {channel.name} added!```')
+            await interaction.send(f'```Channel {channel.name} added!```')
             await channel.send(f'```Counting activated! Start counting by typing 1.```')
     finally:
         close_connection(conn)
 
 
 # Command to delete a channel
-@bot.command(description='Remove a channel to deactivate counting in.')
+@bot.slash_command(description='Remove a channel to deactivate counting in.')
 @commands.has_permissions(administrator=True)
-async def delete_channel(ctx, channel: discord.TextChannel):
-    if channel.guild.id != ctx.guild.id:
-        await ctx.reply(f'```Error: {channel.name} is not part of this server.```')
+async def delete_channel(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
+    if channel.guild.id != interaction.guild.id:
+        await interaction.send(f'```Error: {channel.name} is not part of this server.```')
         return
 
     conn = create_connection()
     if conn is None:
-        await ctx.reply("```Database connection failed.```")
+        await interaction.send("```Database connection failed.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.message.content}'")
+    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
         if not cursor.fetchone():
-            await ctx.reply(f'```Error: Channel {channel.name} not activated.```')
+            await interaction.send(f'```Error: Channel {channel.name} not activated.```')
         else:
             cursor.execute("DELETE FROM channels WHERE channel_id = ?", (str(channel.id),))
             conn.commit()
-            await ctx.reply(f'```Channel {channel.name} removed!```')
+            await interaction.send(f'```Channel {channel.name} removed!```')
     finally:
         close_connection(conn)
 
 
 # Command to show the highscore
-@bot.command(description='Show the highscore of the current channel.')
-async def highscore(ctx):
-    if not await is_channel_allowed(ctx.message):
-        await ctx.reply("```This channel is not activated for counting.```")
+@bot.slash_command(description='Show the highscore of the current channel.')
+async def highscore(interaction: disnake.ApplicationCommandInteraction):
+    if not await is_channel_allowed(interaction):
+        await interaction.send("```This channel is not activated for counting.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
 
-    current_highscore = get_highscore(ctx.channel.id)
-    await ctx.reply(f'```Current highscore: {current_highscore}```')
+    current_highscore = get_highscore(interaction.channel.id)
+    await interaction.send(f'```Current highscore: {current_highscore}```')
 
 
 # Command to reset the highscore
-@bot.command(description='Reset the highscore of the current channel.')
+@bot.slash_command(description='Reset the highscore of the current channel.')
 @commands.has_permissions(administrator=True)
-async def reset_highscore(ctx):
-    if not await is_channel_allowed(ctx.message):
-        await ctx.reply("```This channel is not activated for counting.```")
+async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
+    if not await is_channel_allowed(interaction):
+        await interaction.send("```This channel is not activated for counting.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
 
-    update_highscore(ctx.channel.id, 0)
-    await ctx.reply("```Highscore reset.```")
+    update_highscore(interaction.channel.id, 0)
+    await interaction.send("```Highscore reset.```")
 
 
 # Set counter
-@bot.command(description='Set the current counter of current channel.')
+@bot.slash_command(description='Set the current counter of current channel.')
 @commands.has_permissions(administrator=True)
-async def set_counter(ctx, count: int):  # Automatically handles type conversion
-    if not await is_channel_allowed(ctx.message):
-        await ctx.reply("```This channel is not activated for counting.```")
+async def set_counter(interaction: disnake.ApplicationCommandInteraction, count: int):
+    if not await is_channel_allowed(interaction):
+        await interaction.send("```This channel is not activated for counting.```")
         return
 
-    logger.info(f"[{ctx.channel.id}] {ctx.author.id}: '{ctx.content}'")
+    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
 
-    update_count(ctx.channel.id, count, 0)  # Reset last_user_id since it's an admin override
-    await ctx.reply(f'```Count set to {count}```')
+    update_count(interaction.channel.id, count, 0)  # Reset last_user_id since it's an admin override
+    await interaction.send(f'```Count set to {count}```')
 
 
 # Bot starts running here
