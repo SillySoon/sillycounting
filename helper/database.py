@@ -57,17 +57,49 @@ def setup_database():
 
     try:
         cursor = connection.cursor()
+        # Create the 'users' table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY
+            );
+        ''')
+
+        # Create the 'channels' table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS channels (
                 channel_id TEXT PRIMARY KEY,
                 count INTEGER,
                 last_user_id TEXT
-            )
+            );
+        ''')
+
+        # Create the 'channeluser' table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS channeluser (
+                channeluser_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                count INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id),
+                FOREIGN KEY (channel_id) REFERENCES channels(channel_id)
+            );
         ''')
         connection.commit()
         logger.info("[DATABASE] Database table created successfully.")
 
-        # Check if all columns exist
+        # Check if all columns of users exist
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [column[1] for column in cursor.fetchall()]
+        required_columns = ["user_id", "username"]
+        for column in required_columns:
+            logger.info(f"[DATABASE] Checking for column {column}")
+            if column not in columns:
+                if column == "user_id":
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {column} INTEGER")
+                connection.commit()
+                logger.info(f"[DATABASE] Column {column} added successfully.")
+
+        # Check if all columns of channels exist
         cursor.execute("PRAGMA table_info(channels)")
         columns = [column[1] for column in cursor.fetchall()]
         required_columns = ["channel_id", "count", "last_user_id", "highscore"]
@@ -82,6 +114,26 @@ def setup_database():
                     cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} TEXT")
                 connection.commit()
                 logger.info(f"[DATABASE] Column {column} added successfully.")
+
+        # Check if all columns of channeluser exist
+        cursor.execute("PRAGMA table_info(channeluser)")
+        columns = [column[1] for column in cursor.fetchall()]
+        required_columns = ["channeluser_id", "user_id", "channel_id", "count"]
+        for column in required_columns:
+            logger.info(f"[DATABASE] Checking for column {column}")
+            if column not in columns:
+                if column == "channeluser_id":
+                    cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} INTEGER PRIMARY KEY AUTOINCREMENT")
+                elif column == "user_id":
+                    cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} TEXT")
+                elif column == "channel_id":
+                    cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} TEXT")
+                else:
+                    cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} INTEGER")
+                connection.commit()
+                logger.info(f"[DATABASE] Column {column} added successfully.")
+
+
     except sqlite3.Error as e:
         logger.error(f"[DATABASE] Failed to create or alter table: {e}")
     finally:
