@@ -377,6 +377,29 @@ def update_highscore(channel_id, new_highscore):
         close_connection(conn)
 
 
+# update all highscores, if current count is higher then highscore, update highscore
+def update_all_highscores():
+    logging.info("[BOT] Requests: Update all highscores")
+    conn = create_connection()
+
+    # Directly update the highscore in the database where count is greater than highscore
+    update_sql = '''
+        UPDATE channels
+        SET highscore = count
+        WHERE count > highscore;
+    '''
+    try:
+        with conn:
+            cur = conn.cursor()
+            cur.execute(update_sql)
+            conn.commit()
+            logging.info(f"[DATABASE] Updated highscores for {cur.rowcount} channels")
+    except sqlite3.Error as e:
+        logging.error(f"An error occurred: {e}")
+    finally:
+        close_connection(conn)
+
+
 # Get the current count and last user ID for a channel
 def get_current_count(channel_id):
     logger.info(f"[BOT] {channel_id} requests: get current count")

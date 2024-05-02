@@ -1,5 +1,6 @@
 # Description: Main file for the bot. Contains the main logic for the bot.
 # Created by: SillySoon https://github.com/SillySoon
+from datetime import datetime
 
 # Importing necessary libraries
 import disnake
@@ -54,11 +55,17 @@ NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 # Event listener for when the bot is ready
 @bot.event
 async def on_ready():
+    # Prepare the database
     logger.info("[BOT] Bot is starting up and preparing database...")
     db.setup_database()
-    logger.info(f'[BOT] Logged on as {bot.user}!')
+
+    # Start the tasks
     update_status.start()
-    print("Bot ready!")
+    update_all_highscores.start()
+
+    # Print a message to the console
+    logger.info(f'[BOT] Logged on as {bot.user}!')
+    print(f'[BOT] Logged on as {bot.user}!')
 
 
 # Task to update the bot's status every 30 minutes
@@ -67,6 +74,16 @@ async def update_status():
     status_list = ["/help"]
     activity = disnake.Game(name='/help')
     await bot.change_presence(activity=activity, status=disnake.Status.online)
+
+
+highscore_change_timestamp = 0
+
+# Task to update all highscores every 60 minutes
+@tasks.loop(minutes=60)
+async def update_all_highscores():
+    db.update_all_highscores()
+    global highscore_change_timestamp   # Use the global variable
+    highscore_change_timestamp = datetime.now().timestamp()
 
 
 # Event listener for when a message is sent
@@ -216,9 +233,11 @@ async def highscore(interaction: disnake.ApplicationCommandInteraction):
         current_highscore = db.get_highscore(interaction.channel.id)
         embed = disnake.Embed(
             title="Highscore",
-            description=f"The current highscore is `{current_highscore}`",
+            description=(f"The current highscore is `{current_highscore}`"
+                         f"\nLast automatic change: <t:{int(highscore_change_timestamp)}:R>"),
             color=disnake.Colour(embed_color)
         )
+        embed.set_footer(text="The highscore is updated every 60 minutes.")
         await interaction.send(embed=embed, ephemeral=True)
     # Catch any exceptions and send an error message
     except Exception as e:
