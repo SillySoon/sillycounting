@@ -247,6 +247,60 @@ def get_highscore(channel_id):
     return 0  # Default to 0 if not found
 
 
+# Get top 10 highscores of all channels
+def get_top_channel_highscores():
+    logger.info(f"[BOT] requests: get top highscores")
+    """Retrieve the highscore for a given channel from the database."""
+    conn = create_connection()
+    sql = ''' SELECT channel_id, highscore FROM channels ORDER BY highscore DESC LIMIT 10 '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
+        return rows
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        close_connection(conn)
+    return []  # Default to 0 if not found
+
+
+# Get Top 10 User Highscores of 1 channel
+def get_top_user_highscores(channel_id):
+    logger.info(f"[BOT] {channel_id} requests: get top user highscores")
+    """Retrieve the highscore for a given channel from the database."""
+    conn = create_connection()
+    sql = ''' SELECT user_id, count FROM channeluser WHERE channel_id = ? ORDER BY count DESC LIMIT 10 '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (channel_id,))
+        rows = cur.fetchall()
+        return rows
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        close_connection(conn)
+    return []  # Default to 0 if not found
+
+
+# Get top 10 users in all channels
+def get_top_users():
+    logger.info(f"[BOT] requests: get top users")
+    """Retrieve the highscore for a given channel from the database."""
+    conn = create_connection()
+    sql = ''' SELECT user_id, SUM(count) as total_count FROM channeluser GROUP BY user_id ORDER BY total_count DESC LIMIT 10 '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
+        return rows
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        close_connection(conn)
+    return []  # Default to 0 if not found
+
+
 # Update the highscore for a channel
 def update_highscore(channel_id, new_highscore):
     logger.info(f"[BOT] {channel_id} requests: update highscore to {new_highscore}")

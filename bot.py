@@ -280,6 +280,70 @@ async def set_counter(interaction: disnake.ApplicationCommandInteraction, count:
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
+# leaderboard command
+@bot.slash_command(description='Show the leaderboard information of various things.')
+async def leaderboard(
+        interaction: disnake.ApplicationCommandInteraction,
+        action: str = commands.param(choices=["server", "channel", "user"]),
+):
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /leaderboard [{action}] ({interaction.id})")
+
+        # Get Top 10 highscolre of all channels avaliable in the db
+        if action == "server":
+            embed = disnake.Embed(
+                title="Server Leaderboard",
+                description="",
+                color=disnake.Colour(embed_color)
+            )
+            for i, (channel_id, highscore) in enumerate(db.get_top_channel_highscores()):
+                channel = bot.get_channel(channel_id)
+                embed.description += f"**#{i + 1}** {channel.guild.name} - Count: `{highscore}`"
+            await interaction.send(embed=embed, ephemeral=True)
+
+        # Get Top 10 highscore of the current channel
+        elif action == "channel":
+            # Check if channel is a counting channel first
+            if not await db.is_channel_allowed(interaction):
+                embed = disnake.Embed(
+                    title="Sorry!",
+                    description=f"This channel is not activated for counting.",
+                    color=disnake.Colour(embed_color)
+                )
+                await interaction.send(embed=embed, ephemeral=True)
+                return
+
+            embed = disnake.Embed(
+                title="Channel Leaderboard",
+                description="",
+                color=disnake.Colour(embed_color)
+            )
+            for i, (user_id, count) in enumerate(db.get_top_user_highscores(channel_id=interaction.channel.id)):
+                user = bot.get_user(user_id)
+                embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`"
+            await interaction.send(embed=embed, ephemeral=True)
+
+        # Get Top 10 highscore of all users : get_top_users()
+        elif action == "user":
+            embed = disnake.Embed(
+                title="User Leaderboard",
+                description="",
+                color=disnake.Colour(embed_color)
+            )
+            for i, (user_id, count) in enumerate(db.get_top_users()):
+                user = bot.get_user(user_id)
+                embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`"
+            await interaction.send(embed=embed, ephemeral=True)
+
+
+
+
+    # Catch any exceptions and send an error message
+    except Exception as e:
+        logger.error(f"[BOT] Error when getting highscore: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
+
+
 # Command for help
 @bot.slash_command(description='Show the help message.')
 async def help(interaction: disnake.ApplicationCommandInteraction):
@@ -297,6 +361,7 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         embed.add_field(name="`/highscore`", value="Show the current highscore")
         embed.add_field(name="`/reset_highscore`", value="Reset the highscore")
         embed.add_field(name="`/set_counter [number]`", value="Set the current counter")
+        embed.add_field(name="`/leaderboard [server/channel/user]`", value="Show the leaderboard information")
         await interaction.send(embed=embed, ephemeral=True)
 
     except Exception as e:
@@ -320,6 +385,7 @@ async def on_slash_command_error(interaction: disnake.ApplicationCommandInteract
         logger.error(f"Error executing command: {e}")
         # Send a general error message
         await interaction.response.send_message(embed=error.create_error_embed(e), ephemeral=True)
+
 
 # Bot starts running here
 bot.run(discord_token)
