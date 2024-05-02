@@ -285,7 +285,8 @@ async def leaderboard(
     try:
         logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /leaderboard [{action}] ({interaction.id})")
 
-        # Get Top 10 highscolre of all channels avaliable in the db
+        # Get Top 10 highscore of all channels avaliable in the db
+        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
         if action == "all servers":
             embed = disnake.Embed(
                 title="Server Leaderboard",
@@ -294,10 +295,19 @@ async def leaderboard(
             )
             for i, (channel_id, highscore) in enumerate(db.get_top_channel_highscores()):
                 channel = bot.get_channel(int(channel_id))
-                embed.description += f"**#{i + 1}** {channel.guild.name} - Count: `{highscore}`\n"
+                if i == 0:
+                    embed.description += f"🥇 {channel.guild.name} - Count: `{highscore}`\n"
+                elif i == 1:
+                    embed.description += f"🥈 {channel.guild.name} - Count: `{highscore}`\n"
+                elif i == 2:
+                    embed.description += f"🥉 {channel.guild.name} - Count: `{highscore}`\n"
+                else:
+                    embed.description += f"**#{i + 1}** {channel.guild.name} - Count: `{highscore}`\n"
+
             await interaction.send(embed=embed, ephemeral=True)
 
         # Get Top 10 highscore of the current channel
+        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
         elif action == "current channel":
             # Check if channel is a counting channel first
             if not await db.is_channel_allowed(interaction):
@@ -315,12 +325,18 @@ async def leaderboard(
                 color=disnake.Colour(embed_color)
             )
             for i, (user_id, count) in enumerate(db.get_top_user_highscores(channel_id=interaction.channel.id)):
-                # print(user_id, count)
-                user = await bot.fetch_user(int(user_id))
-                embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`\n"
+                if i == 0:
+                    embed.description += f"🥇 <@{user_id}> - Count: `{count}`\n"
+                elif i == 1:
+                    embed.description += f"🥈 <@{user_id}> - Count: `{count}`\n"
+                elif i == 2:
+                    embed.description += f"🥉 <@{user_id}> - Count: `{count}`\n"
+                else:
+                    embed.description += f"**#{i + 1}** <@{user_id}> - Count: `{count}`\n"
             await interaction.send(embed=embed, ephemeral=True)
 
         # Get Top 10 highscore of all users : get_top_users()
+        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
         elif action == "all users":
             embed = disnake.Embed(
                 title="User Leaderboard",
@@ -328,9 +344,14 @@ async def leaderboard(
                 color=disnake.Colour(embed_color)
             )
             for i, (user_id, count) in enumerate(db.get_top_users()):
-                # print(user_id, count)
-                user = await bot.fetch_user(int(user_id))
-                embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`\n"
+                if i == 0:
+                    embed.description += f"🥇 <@{user_id}> - Count: `{count}`\n"
+                elif i == 1:
+                    embed.description += f"🥈 <@{user_id}> - Count: `{count}`\n"
+                elif i == 2:
+                    embed.description += f"🥉 <@{user_id}> - Count: `{count}`\n"
+                else:
+                    embed.description += f"**#{i + 1}** <@{user_id}> - Count: `{count}`\n"
             await interaction.send(embed=embed, ephemeral=True)
 
     # Catch any exceptions and send an error message
