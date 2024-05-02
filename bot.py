@@ -79,8 +79,8 @@ async def on_message(message):
     if await db.is_channel_allowed(message):
         current_count, last_user_id = db.get_current_count(message.channel.id)
 
-        print(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
-        logger.info(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
+        print(f"[{message.channel.id}] {message.author.id}: {message.content}")
+        logger.info(f"[{message.channel.id}] {message.author.id}: {message.content}")
 
         try:
             message_number = int(message.content)
@@ -91,20 +91,40 @@ async def on_message(message):
                 if str(message.author.id) == last_user_id:
                     db.update_count(message.channel.id, 0, 0)
                     await message.add_reaction(NEGATIVE_EMOJI)
-                    await message.reply("```You can't count twice in a row! Starting from 1 again.```")
+                    embed = disnake.Embed(
+                        title="You cannot count twice in a row!",
+                        description="Starting from `1` again.",
+                        color=disnake.Colour(embed_color)
+                    )
+                    await message.reply(embed=embed)
                 else:
                     db.update_count(message.channel.id, 0, 0)
                     await message.add_reaction(NEGATIVE_EMOJI)
-                    await message.reply(f"```The Number should be {current_count + 1}. Starting from 1 again.```")
+                        title=f"The number was {current_count + 1}",
+                        description=f"Starting from `1` again.",
+                        color=disnake.Colour(embed_color)
+                    )
+                    await message.reply(embed=embed)
 
                 """Check if current highscore is less than new highscore and update it."""
                 current_highscore = db.get_highscore(message.channel.id)
 
                 if current_count <= current_highscore:
-                    await message.channel.send(f"```Current highscore: {current_highscore}. Try to beat it!```")
+                    embed = disnake.Embed(
+                        title="Better luck next time!",
+                        description=f"Current highscore is {current_highscore}. Try to beat it!",
+                        color=disnake.Colour(embed_color)
+                    )
+                    await message.channel.send(embed=embed)
                     return
-                await message.channel.send(f"```New highscore: {current_count}!```")
+
                 db.update_highscore(message.channel.id, current_count)
+                embed = disnake.Embed(
+                    title="New highscore!",
+                    description=f"We reached a highscore of `{current_count}`!",
+                    color=disnake.Colour(embed_color)
+                )
+                await message.channel.send(embed=embed)
         except ValueError:
             pass  # Ignore messages that are not numbers
 
