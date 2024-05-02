@@ -280,6 +280,30 @@ async def set_counter(interaction: disnake.ApplicationCommandInteraction, count:
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
+# Command for help
+@bot.slash_command(description='Show the help message.')
+async def help(interaction: disnake.ApplicationCommandInteraction):
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /help ({interaction.id})")
+
+        embed = disnake.Embed(
+            title="SillyCounting Help",
+            description="[] = Needed argument\n() = Optional argument",
+            color=disnake.Colour(embed_color)
+        )
+        embed.add_field(name="`/help`", value="Show this help message")
+        embed.add_field(name="`/enable [channel]`", value="Enable counting in the current channel")
+        embed.add_field(name="`/disable [channel]`", value="Disable counting in the current channel")
+        embed.add_field(name="`/highscore`", value="Show the current highscore")
+        embed.add_field(name="`/reset_highscore`", value="Reset the highscore")
+        embed.add_field(name="`/set_counter [number]`", value="Set the current counter")
+        await interaction.send(embed=embed, ephemeral=True)
+
+    except Exception as e:
+        logger.error(f"[BOT] Error when showing help: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
+
+
 # Slash command error handler
 @bot.event
 async def on_slash_command_error(interaction: disnake.ApplicationCommandInteraction, e):
