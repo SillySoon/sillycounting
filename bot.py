@@ -1,13 +1,15 @@
-import disnake
-import logging
-import sqlite3
-import os
-from logging.handlers import TimedRotatingFileHandler
-from disnake.ext import commands, tasks
-from dotenv import load_dotenv
+# Description: Main file for the bot. Contains the main logic for the bot.
+# Created by: SillySoon https://github.com/SillySoon
 
-# Import your database module
+# Importing necessary libraries
+import disnake
+from disnake.ext import commands, tasks
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import os
+from dotenv import load_dotenv
 import helper.database as db
+import helper.error as error
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -15,15 +17,13 @@ load_dotenv()
 # Accessing the environment variables
 discord_token = os.getenv('DISCORD_TOKEN')
 command_prefix = os.getenv('COMMAND_PREFIX')
+embed_color = int(os.getenv('EMBED_COLOR'), 16)
 
 # Initialize the Bot with command prefix and intents
 intents = disnake.Intents.default()
 intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix=command_prefix, intents=intents)
-
-POSITIVE_EMOJI = '<:positive:1232460365183582239>'
-NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 
 # Setup basic configuration for logging
 os.makedirs('./logs', exist_ok=True)  # Ensure the directory for logs exists
@@ -46,23 +46,9 @@ logger.addHandler(log_handler)
 # Use `logger` to log messages
 logger.info("[START] Bot is starting up...")
 
-
-async def is_channel_allowed(message):
-    """Check if the message channel is in the allowed channels list using the database."""
-    conn = db.create_connection()
-    if conn is None:
-        logger.error("[BOT] Failed to connect to database when checking channel allowance.")
-        return False
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1 FROM channels WHERE channel_id = ?", (str(message.channel.id),))
-        return cursor.fetchone() is not None
-    except sqlite3.Error as e:
-        logger.error(f"[BOT] Database error when checking if channel is allowed: {e}")
-        return False
-    finally:
-        db.close_connection(conn)
+# Emojis for reactions
+POSITIVE_EMOJI = '<:positive:1232460365183582239>'
+NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 
 
 # Event listener for when the bot is ready
@@ -75,54 +61,25 @@ async def on_ready():
     print("Bot ready!")
 
 
+# Task to update the bot's status every 30 minutes
 @tasks.loop(minutes=30)
 async def update_status():
-    activity = disnake.Game(name=f'{command_prefix}help')
+    status_list = ["/help"]
+    activity = disnake.Game(name='/help')
     await bot.change_presence(activity=activity, status=disnake.Status.online)
 
 
-# Error handler for commands
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.reply("```Command not recognized.```")
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.reply("```You do not have permission to execute this command.```")
-    elif isinstance(error, commands.CheckFailure):
-        await ctx.reply("```This command cannot be used in this channel.```")
-    else:
-        logger.error(f"Unhandled exception: {error}")
-        await ctx.reply("```An unexpected error occurred.```")
-        raise error  # Optionally re-raise the error if you want it to propagate
-
-
-# Error handling general
-@bot.event
-async def on_error(event_method, *args, **kwargs):
-    logger.error(f'An error occurred in {event_method}')
-    # Extracting the channel from args if possible
-    if args:
-        message = args[0]  # Assuming that the first arg is the message
-        if isinstance(message, disnake.Message):
-            channel = message.channel
-            try:
-                await channel.send("```An unexpected error occurred. Please contact the administrator.```")
-            except disnake.DiscordException:
-                pass  # In case the bot doesn't have permission to send messages in the channel
-    # Log to console or a file if necessary
-    logger.error(f"Error in {event_method}: {args} {kwargs}")  # Make sure to set up a logger
-
-
+# Event listener for when a message is sent
 @bot.event
 async def on_message(message):
     if message.author == bot.user or not message.content.isdigit():
         await bot.process_commands(message)
         return
 
-    print(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
-
-    if await is_channel_allowed(message):
+    if await db.is_channel_allowed(message):
         current_count, last_user_id = db.get_current_count(message.channel.id)
+
+        print(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
         logger.info(f"[{message.channel.id}] {message.author.id}: '{message.content}'")
 
         try:
@@ -155,100 +112,151 @@ async def on_message(message):
 
 
 # Command to add a channel
-@bot.slash_command(description='Add a channel to activate counting in.')
+@bot.slash_command(description='Enables the counting function in XYZ channel.')
 @commands.has_permissions(administrator=True)
-async def add_channel(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-    if channel.guild.id != interaction.guild.id:
-        await interaction.send(f'```Error: {channel.name} is not part of this server.```')
-        return
-
-    conn = db.create_connection()
-    if conn is None:
-        await interaction.send("```Database connection failed.```")
-        return
-
-    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
-
+async def enable(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
-        if cursor.fetchone():
-            await interaction.send(f'```Error: Channel {channel.name} is already added.```')
-        else:
-            db.add_channel(str(channel.id))
-            await interaction.send(f'```Channel {channel.name} added!```')
-            await channel.send(f'```Counting activated! Start counting by typing 1.```')
-    finally:
-        db.close_connection(conn)
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /enable {channel.id} ({interaction.id})")
+
+        if db.check_channel(str(channel.id)):
+            embed = disnake.Embed(
+                title="Sorry!",
+                description=f"Channel <#{channel.id}> is already a counting channel.",
+                color=disnake.Colour(embed_color)
+            )
+            await interaction.send(embed=embed, ephemeral=True)
+            return
+
+        db.add_channel(str(channel.id))
+        embed = disnake.Embed(
+            title="Channel Added",
+            description=f"Channel <#{channel.id}> successfully added!",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        logger.error(f"[BOT] Error when adding channel: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
-# Command to delete a channel
-@bot.slash_command(description='Remove a channel to deactivate counting in.')
+# Command to remove a channel
+@bot.slash_command(description='Disables the counting function in XYZ channel.')
 @commands.has_permissions(administrator=True)
-async def delete_channel(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-    if channel.guild.id != interaction.guild.id:
-        await interaction.send(f'```Error: {channel.name} is not part of this server.```')
-        return
-
-    conn = db.create_connection()
-    if conn is None:
-        await interaction.send("```Database connection failed.```")
-        return
-
-    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
-
+async def disable(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT channel_id FROM channels WHERE channel_id = ?", (str(channel.id),))
-        if not cursor.fetchone():
-            await interaction.send(f'```Error: Channel {channel.name} not activated.```')
-        else:
-            cursor.execute("DELETE FROM channels WHERE channel_id = ?", (str(channel.id),))
-            conn.commit()
-            await interaction.send(f'```Channel {channel.name} removed!```')
-    finally:
-        db.close_connection(conn)
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /disable {channel.id} ({interaction.id})")
+
+        if not db.check_channel(str(channel.id)):
+            embed = disnake.Embed(
+                title="Sorry!",
+                description=f"Channel <#{channel.id}> is not a counting channel.",
+                color=disnake.Colour(embed_color)
+            )
+            await interaction.send(embed=embed, ephemeral=True)
+            return
+
+        db.remove_channel(str(channel.id))
+        embed = disnake.Embed(
+            title="Channel Removed",
+            description=f"Channel <#{channel.id}> successfully removed!",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        logger.error(f"[BOT] Error when removing channel: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
 # Command to show the highscore
 @bot.slash_command(description='Show the highscore of the current channel.')
 async def highscore(interaction: disnake.ApplicationCommandInteraction):
-    if not await is_channel_allowed(interaction):
-        await interaction.send("```This channel is not activated for counting.```")
-        return
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /highscore ({interaction.id})")
 
-    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
+        # Check if the channel is allowed for counting
+        if not await db.is_channel_allowed(interaction):
+            embed = disnake.Embed(
+                title="Sorry!",
+                description=f"This channel is not activated for counting.",
+                color=disnake.Colour(embed_color)
+            )
+            await interaction.send(embed=embed, ephemeral=True)
+            return
 
-    current_highscore = db.get_highscore(interaction.channel.id)
-    await interaction.send(f'```Current highscore: {current_highscore}```')
+        # Get the current highscore from the database
+        current_highscore = db.get_highscore(interaction.channel.id)
+        embed = disnake.Embed(
+            title="Highscore",
+            description=f"The current highscore is `{current_highscore}`",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed)
+    # Catch any exceptions and send an error message
+    except Exception as e:
+        logger.error(f"[BOT] Error when getting highscore: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
 # Command to reset the highscore
 @bot.slash_command(description='Reset the highscore of the current channel.')
 @commands.has_permissions(administrator=True)
 async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
-    if not await is_channel_allowed(interaction):
-        await interaction.send("```This channel is not activated for counting.```")
-        return
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /reset_highscore ({interaction.id})")
 
-    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
+        # Check if the channel is allowed for counting
+        if not await db.is_channel_allowed(interaction):
+            embed = disnake.Embed(
+                title="Sorry!",
+                description=f"This channel is not activated for counting.",
+                color=disnake.Colour(embed_color)
+            )
+            await interaction.send(embed=embed, ephemeral=True)
+            return
 
-    db.update_highscore(interaction.channel.id, 0)
-    await interaction.send("```Highscore reset.```")
+        # Reset the highscore in the database
+        db.update_highscore(interaction.channel.id, 0)
+        embed = disnake.Embed(
+            title="Highscore Reset",
+            description=f"Highscore successfully reset!",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed)
+    # Catch any exceptions and send an error message
+    except Exception as e:
+        logger.error(f"[BOT] Error when resetting highscore: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
-# Set counter
+# Command to set the counter
 @bot.slash_command(description='Set the current counter of current channel.')
 @commands.has_permissions(administrator=True)
 async def set_counter(interaction: disnake.ApplicationCommandInteraction, count: int):
-    if not await is_channel_allowed(interaction):
-        await interaction.send("```This channel is not activated for counting.```")
-        return
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /set_counter {count} ({interaction.id})")
 
-    logger.info(f"[{interaction.channel.id}] {interaction.author.id}: '{interaction.id}'")
+        # Check if the channel is allowed for counting
+        if not await db.is_channel_allowed(interaction):
+            embed = disnake.Embed(
+                title="Sorry!",
+                description=f"This channel is not activated for counting.",
+                color=disnake.Colour(embed_color)
+            )
+            await interaction.send(embed=embed, ephemeral=True)
+            return
 
-    db.update_count(interaction.channel.id, count, 0)  # Reset last_user_id since it's an admin override
-    await interaction.send(f'```Count set to {count}```')
+        # Set the counter in the database
+        db.update_count(interaction.channel.id, count, 0)
+        embed = disnake.Embed(
+            title="Counter Set",
+            description=f"Counter successfully set to {count}!",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed)
+    # Catch any exceptions and send an error message
+    except Exception as e:
+        logger.error(f"[BOT] Error when setting counter: {e}")
+        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
 # Bot starts running here

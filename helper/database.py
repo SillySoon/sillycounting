@@ -9,7 +9,7 @@ import logging
 load_dotenv()
 
 # Database path from .env
-DATABASE_PATH = os.getenv('DATABASE_PATH')
+database_path = os.getenv('DATABASE_PATH')
 
 # Configure logging for database operations
 logger = logging.getLogger(__name__)
@@ -30,19 +30,22 @@ class SQLiteConnectionPool:
 
 
 # Initialize the connection pool
-connection_pool = SQLiteConnectionPool(DATABASE_PATH)
+connection_pool = SQLiteConnectionPool(database_path)
 
 
+# Create database connection
 def create_connection():
     """ Get a database connection from the pool."""
     return connection_pool.get_connection()
 
 
+# Close database connection
 def close_connection(conn):
     """ Release a database connection back to the pool."""
     connection_pool.release_connection(conn)
 
 
+# Setup the database
 def setup_database():
     """Set up the database and tables."""
     connection = create_connection()
@@ -85,6 +88,26 @@ def setup_database():
         close_connection(connection)
 
 
+# Check if the channel is allowed
+async def is_channel_allowed(message):
+    """Check if the message channel is in the allowed channels list using the database."""
+    conn = create_connection()
+    if conn is None:
+        logger.error("[BOT] Failed to connect to database when checking channel allowance.")
+        return False
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM channels WHERE channel_id = ?", (str(message.channel.id),))
+        return cursor.fetchone() is not None
+    except sqlite3.Error as e:
+        logger.error(f"[BOT] Database error when checking if channel is allowed: {e}")
+        return False
+    finally:
+        close_connection(conn)
+
+
+# Add a channel to the database
 def update_count(channel_id, new_count, user_id):
     logger.info(f"[BOT] {channel_id} requests: update count to {new_count} for user {user_id}")
     """Update the count in the database for a given channel."""
@@ -103,6 +126,7 @@ def update_count(channel_id, new_count, user_id):
         close_connection(connection)
 
 
+# Add a channel to the database
 def add_channel(channel_id):
     logger.info(f"[BOT] {channel_id} requests: add channel")
     conn = create_connection()
@@ -118,6 +142,41 @@ def add_channel(channel_id):
         close_connection(conn)
 
 
+# Remove a channel from the database
+def remove_channel(channel_id):
+    logger.info(f"[BOT] {channel_id} requests: remove channel")
+    conn = create_connection()
+    sql = ''' DELETE FROM channels WHERE channel_id = ? '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (channel_id,))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"[BOT] Failed to remove channel: {e}")
+        print(e)
+    finally:
+        close_connection(conn)
+
+
+# Check a channel is in the database
+def check_channel(channel_id):
+    logger.info(f"[BOT] {channel_id} requests: check channel")
+    conn = create_connection()
+    sql = ''' SELECT channel_id FROM channels WHERE channel_id = ? '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (channel_id,))
+        row = cur.fetchone()
+        if row:
+            return True
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        close_connection(conn)
+    return False  # Default to False if not found
+
+
+# Get the highscore for a channel
 def get_highscore(channel_id):
     logger.info(f"[BOT] {channel_id} requests: get highscore")
     """Retrieve the highscore for a given channel from the database."""
@@ -136,6 +195,7 @@ def get_highscore(channel_id):
     return 0  # Default to 0 if not found
 
 
+# Update the highscore for a channel
 def update_highscore(channel_id, new_highscore):
     logger.info(f"[BOT] {channel_id} requests: update highscore to {new_highscore}")
     conn = create_connection()
@@ -153,6 +213,7 @@ def update_highscore(channel_id, new_highscore):
         close_connection(conn)
 
 
+# Get the current count and last user ID for a channel
 def get_current_count(channel_id):
     logger.info(f"[BOT] {channel_id} requests: get current count")
     """Retrieve the current count and last user ID for a given channel from the database."""
