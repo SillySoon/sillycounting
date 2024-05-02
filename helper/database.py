@@ -227,6 +227,64 @@ def check_channel(channel_id):
         close_connection(conn)
     return False  # Default to False if not found
 
+# Check a user is in the database
+def check_user(user_id):
+    logger.info(f"[BOT] {user_id} requests: check user")
+    conn = create_connection()
+    sql = ''' SELECT user_id FROM users WHERE user_id = ? '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (user_id,))
+        row = cur.fetchone()
+        if row:
+            return True
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        close_connection(conn)
+    return False  # Default to False if not found
+
+
+# Add a user to the database
+def add_user(user_id):
+    logger.info(f"[BOT] {user_id} requests: add user")
+    conn = create_connection()
+    sql = ''' INSERT INTO users(user_id) VALUES(?) '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (user_id,))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"[BOT] Failed to add user: {e}")
+        print(e)
+    finally:
+        close_connection(conn)
+
+
+# Update the count for a user in a channel, count is always + 1
+def update_user_count(channel_id, user_id):
+    logger.info(f"[BOT] {channel_id} requests: update user count for {user_id}")
+    conn = create_connection()
+    sql = ''' SELECT count FROM channeluser WHERE user_id = ? AND channel_id = ? '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (user_id, channel_id))
+        row = cur.fetchone()
+        if row:
+            new_count = row[0] + 1
+            sql = ''' UPDATE channeluser SET count = ? WHERE user_id = ? AND channel_id = ? '''
+            cur.execute(sql, (new_count, user_id, channel_id))
+            conn.commit()
+        else:
+            sql = ''' INSERT INTO channeluser(user_id, channel_id, count) VALUES(?, ?, 1) '''
+            cur.execute(sql, (user_id, channel_id))
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"[BOT] Failed to update user count: {e}")
+        print(e)
+    finally:
+        close_connection(conn)
+
 
 # Get the highscore for a channel
 def get_highscore(channel_id):
