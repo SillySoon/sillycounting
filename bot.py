@@ -257,37 +257,6 @@ async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
-# Command to set the counter
-@bot.slash_command(description='Set the current counter of current channel.')
-@commands.has_permissions(administrator=True)
-async def set_counter(interaction: disnake.ApplicationCommandInteraction, count: int):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /set_counter {count} ({interaction.id})")
-
-        # Check if the channel is allowed for counting
-        if not await db.is_channel_allowed(interaction):
-            embed = disnake.Embed(
-                title="Sorry!",
-                description=f"This channel is not activated for counting.",
-                color=disnake.Colour(embed_color)
-            )
-            await interaction.send(embed=embed, ephemeral=True)
-            return
-
-        # Set the counter in the database
-        db.update_count(interaction.channel.id, count, 0)
-        embed = disnake.Embed(
-            title="Counter Set",
-            description=f"Counter successfully set to {count}!",
-            color=disnake.Colour(embed_color)
-        )
-        await interaction.send(embed=embed)
-    # Catch any exceptions and send an error message
-    except Exception as e:
-        logger.error(f"[BOT] Error when setting counter: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
 # leaderboard command
 @bot.slash_command(description='Show the leaderboard information of various things.')
 async def leaderboard(
@@ -367,7 +336,6 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         embed.add_field(name="`/disable [channel]`", value="Disable counting in the current channel")
         embed.add_field(name="`/highscore`", value="Show the current highscore")
         embed.add_field(name="`/reset_highscore`", value="Reset the highscore")
-        embed.add_field(name="`/set_counter [number]`", value="Set the current counter")
         embed.add_field(name="`/leaderboard [action]`", value="Show some leaderboard information")
         await interaction.send(embed=embed, ephemeral=True)
 
