@@ -297,7 +297,7 @@ async def leaderboard(
                 color=disnake.Colour(embed_color)
             )
             for i, (channel_id, highscore) in enumerate(db.get_top_channel_highscores()):
-                channel = bot.get_channel(channel_id)
+                channel = bot.get_channel(int(channel_id))
                 embed.description += f"**#{i + 1}** {channel.guild.name} - Count: `{highscore}`"
             await interaction.send(embed=embed, ephemeral=True)
 
@@ -319,7 +319,7 @@ async def leaderboard(
                 color=disnake.Colour(embed_color)
             )
             for i, (user_id, count) in enumerate(db.get_top_user_highscores(channel_id=interaction.channel.id)):
-                user = bot.get_user(user_id)
+                user = bot.get_user(int(user_id))
                 embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`"
             await interaction.send(embed=embed, ephemeral=True)
 
@@ -331,12 +331,9 @@ async def leaderboard(
                 color=disnake.Colour(embed_color)
             )
             for i, (user_id, count) in enumerate(db.get_top_users()):
-                user = bot.get_user(user_id)
+                user = bot.get_user(int(user_id))
                 embed.description += f"**#{i + 1}** <@{user.id}> - Count: `{count}`"
             await interaction.send(embed=embed, ephemeral=True)
-
-
-
 
     # Catch any exceptions and send an error message
     except Exception as e:
