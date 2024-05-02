@@ -100,6 +100,7 @@ async def on_message(message):
                 else:
                     db.update_count(message.channel.id, 0, 0)
                     await message.add_reaction(NEGATIVE_EMOJI)
+                    embed = disnake.Embed(
                         title=f"The number was {current_count + 1}",
                         description=f"Starting from `1` again.",
                         color=disnake.Colour(embed_color)
@@ -278,6 +279,23 @@ async def set_counter(interaction: disnake.ApplicationCommandInteraction, count:
         logger.error(f"[BOT] Error when setting counter: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
+
+# Slash command error handler
+@bot.event
+async def on_slash_command_error(interaction: disnake.ApplicationCommandInteraction, e):
+    if isinstance(e, commands.MissingPermissions):
+        # You can customize this message as per your need
+        embed = disnake.Embed(
+            title="Permission Denied",
+            description="You do not have the necessary permissions to use this command.",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    else:
+        # Log other errors as they are not permission-related
+        logger.error(f"Error executing command: {e}")
+        # Send a general error message
+        await interaction.response.send_message(embed=error.create_error_embed(e), ephemeral=True)
 
 # Bot starts running here
 bot.run(discord_token)
