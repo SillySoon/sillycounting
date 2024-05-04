@@ -11,10 +11,7 @@ import settings
 # Importing necessary libraries
 import disnake
 from disnake.ext import commands, tasks
-import logging
-from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
-import os
 
 # Initialize the Bot with command prefix and intents
 intents = disnake.Intents.default()
@@ -22,27 +19,11 @@ intents.messages = True
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix=settings.COMMAND_PREFIX, intents=intents)
 
-# Setup basic configuration for logging
-os.makedirs('./logs', exist_ok=True)  # Ensure the directory for logs exists
-
-# Setup handler for rotating logs daily
-log_handler = TimedRotatingFileHandler(
-    filename='./logs/log',  # Base file name
-    when='midnight',  # Rotate at midnight
-    interval=1,  # Every 1 day
-    backupCount=31  # Keep 1 month of logs
-)
-log_handler.setFormatter(logging.Formatter('%(levelname)s - %(asctime)s - %(message)s'))
-log_handler.setLevel(logging.INFO)
-
 # Setup the logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(log_handler)
-logger.propagate = False  # Prevent logs from propagating to the root logger
+logger = settings.logging.getLogger('bot')
 
 # Use `logger` to log messages
-logger.info("[START] Bot is starting up...")
+logger.info("Bot is starting up...")
 
 # Emojis for reactions
 POSITIVE_EMOJI = '<:positive:1232460365183582239>'
@@ -53,16 +34,15 @@ NEGATIVE_EMOJI = '<:negative:1232460363954651177>'
 @bot.event
 async def on_ready():
     # Prepare the database
-    logger.info("[BOT] Bot is starting up and preparing database...")
+    logger.info("Bot is starting up and preparing database...")
     db.setup_database()
 
     # Start the tasks
     update_status.start()
     update_all_highscores.start()
 
-    # Print a message to the console
-    logger.info(f'[BOT] Logged on as {bot.user} with {bot.shard_count} shards!')
-    print(f'[BOT] Logged on as {bot.user} with {bot.shard_count} shards!')
+    # Log a message to the console
+    logger.info(f'Logged on as {bot.user} with {bot.shard_count} shards!')
 
 
 # Task to update the bot's status every 30 minutes
@@ -105,7 +85,6 @@ async def on_message(message):
         try:
             current_count, last_user_id = db.get_current_count(message.channel.id)
 
-            print(f"[{message.channel.id}] {message.author.id}: {message.content} ({message_number})")
             logger.info(f"[{message.channel.id}] {message.author.id}: {message.content} ({message_number})")
 
             if message_number == current_count + 1 and str(message.author.id) != last_user_id:
@@ -190,7 +169,7 @@ async def enable(interaction: disnake.ApplicationCommandInteraction, channel: di
         )
         await interaction.send(embed=embed, ephemeral=True)
     except Exception as e:
-        logger.error(f"[BOT] Error when adding channel: {e}")
+        logger.error(f"Error when adding channel: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -219,7 +198,7 @@ async def disable(interaction: disnake.ApplicationCommandInteraction, channel: d
         embed.set_footer(text="Your thoughts? Use /feedback to share!")
         await interaction.send(embed=embed, ephemeral=True)
     except Exception as e:
-        logger.error(f"[BOT] Error when removing channel: {e}")
+        logger.error(f"Error when removing channel: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -251,7 +230,7 @@ async def highscore(interaction: disnake.ApplicationCommandInteraction):
         await interaction.send(embed=embed, ephemeral=True)
     # Catch any exceptions and send an error message
     except Exception as e:
-        logger.error(f"[BOT] Error when getting highscore: {e}")
+        logger.error(f"Error when getting highscore: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -283,7 +262,7 @@ async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
         await interaction.send(embed=embed)
     # Catch any exceptions and send an error message
     except Exception as e:
-        logger.error(f"[BOT] Error when resetting highscore: {e}")
+        logger.error(f"Error when resetting highscore: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -316,7 +295,7 @@ async def feedback(
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     except Exception as e:
-        logger.error(f"[BOT] Error when sending feedback: {e}")
+        logger.error(f"Error when sending feedback: {e}")
         await interaction.response.send_message(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -405,7 +384,7 @@ async def leaderboard(
 
     # Catch any exceptions and send an error message
     except Exception as e:
-        logger.error(f"[BOT] Error when getting highscore: {e}")
+        logger.error(f"Error when getting highscore: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
@@ -457,7 +436,7 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         await interaction.send(embed=embed, ephemeral=True)
 
     except Exception as e:
-        logger.error(f"[BOT] Error when showing help: {e}")
+        logger.error(f"Error when showing help: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
