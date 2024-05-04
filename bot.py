@@ -416,6 +416,32 @@ async def leaderboard(
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
 
+# Command to eval a number
+@bot.slash_command(description='Evaluate a number.')
+async def eval_number(interaction: disnake.ApplicationCommandInteraction, expression: str):
+    try:
+        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /eval_number {expression} ({interaction.id})")
+
+        # Attempt to evaluate the number
+        evaluated_number = eval.safe_eval(expression)
+        embed = disnake.Embed(
+            title="Evaluated Number",
+            description=f"The evaluated number is `{evaluated_number}`.",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed, ephemeral=True)
+
+    except Exception as e:
+        # Message that eval doesn't know this number
+        embed = disnake.Embed(
+            title="Error",
+            description=f"Eval doesn't know this number.\n"
+                        f"Supported operations: +, -, *, /, **, sin(), cos, tan, log, log10, sqrt, exp, pi, e",
+            color=disnake.Colour(embed_color)
+        )
+        await interaction.send(embed=embed, ephemeral=True)
+
+
 # Command for help
 @bot.slash_command(description='Show the help message.')
 async def help(interaction: disnake.ApplicationCommandInteraction):
@@ -434,6 +460,7 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         embed.add_field(name="`/reset_highscore`", value="Reset the highscore")
         embed.add_field(name="`/leaderboard [action]`", value="Show some leaderboard information")
         embed.add_field(name="`/feedback [feedback]`", value="Send feedback to the developers")
+        embed.add_field(name="`/eval_number [expression]`", value="Evaluate a number")
         await interaction.send(embed=embed, ephemeral=True)
 
     except Exception as e:

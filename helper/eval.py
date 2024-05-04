@@ -52,6 +52,16 @@ def safe_eval(expr):
     return eval_(tree.body)
 
 
-# Example usage to test case insensitivity:
-if __name__ == "__main__":
-    print(safe_eval("Sin(PI/2) + COS(0)"))  # Should output 2.0
+# Examples
+# Sin(PI/2) + COS(0) = 2.0
+# 2 * (3 + 4) = 14
+# LOG10(100) = 2.0
+# SQRT(16) = 4.0
+# EXP(1) = 2.718281828459045
+# E = 2.718281828459045
+# PI = 3.141592653589793
+# 2 * PI = 6.283185307179586
+# -2 * PI = -6.283185307179586
+# -SIN(PI) = 0.0
+# TAN(PI/4) = 0.9999999999999999
+
