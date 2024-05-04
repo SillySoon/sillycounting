@@ -1,3 +1,4 @@
 disnake
 python-dotenv
 logging
+colorlog
