@@ -383,6 +383,45 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         logger.error(f"[BOT] Error when showing help: {e}")
         await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
 
+# Event listener for when a message is deleted
+@bot.event
+async def on_message_delete(message):
+    if message.author == bot.user or not message.content.isdigit():
+        return
+
+    # Check if the channel is allowed for counting
+    if await db.is_channel_allowed(message):
+        try:
+            current_count, last_user_id = db.get_current_count(message.channel.id)
+
+            embed = disnake.Embed(
+                title="Number Deleted",
+                description=f"<@{message.author.id}> deleted a message!\nCurrent count is `{current_count}`.",
+                color=disnake.Colour(embed_color)
+            )
+            await message.channel.send(embed=embed)
+        except ValueError:
+            pass
+
+# Event listener for when a message is edited
+@bot.event
+async def on_message_edit(before, after):
+    if before.author == bot.user or not before.content.isdigit():
+        return
+
+    # Check if the channel is allowed for counting
+    if await db.is_channel_allowed(before):
+        try:
+            current_count, last_user_id = db.get_current_count(before.channel.id)
+
+            embed = disnake.Embed(
+                title="Number Edited",
+                description=f"<@{before.author.id}> edited a message!\nCurrent count is `{current_count}`.",
+                color=disnake.Colour(embed_color)
+            )
+            await before.channel.send(embed=embed)
+        except ValueError:
+            pass
 
 # Slash command error handler
 @bot.event
