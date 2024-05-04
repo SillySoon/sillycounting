@@ -24,7 +24,7 @@ embed_color = int(os.getenv('EMBED_COLOR'), 16)
 intents = disnake.Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = commands.Bot(command_prefix=command_prefix, intents=intents)
+bot = commands.AutoShardedBot(command_prefix=command_prefix, intents=intents)
 
 # Setup basic configuration for logging
 os.makedirs('./logs', exist_ok=True)  # Ensure the directory for logs exists
@@ -64,8 +64,8 @@ async def on_ready():
     update_all_highscores.start()
 
     # Print a message to the console
-    logger.info(f'[BOT] Logged on as {bot.user}!')
-    print(f'[BOT] Logged on as {bot.user}!')
+    logger.info(f'[BOT] Logged on as {bot.user} with {bot.shard_count} shards!')
+    print(f'[BOT] Logged on as {bot.user} with {bot.shard_count} shards!')
 
 
 # Task to update the bot's status every 30 minutes
