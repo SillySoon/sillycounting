@@ -1,17 +1,17 @@
 # Description: Main file for the bot. Contains the main logic for the bot.
 # Created by: SillySoon https://github.com/SillySoon
 
+
 # import own modules
 import helper.database as db
 import helper.error as error
 import helper.eval as eval
 import settings
 
-
 # Importing necessary libraries
 import disnake
 from disnake.ext import commands, tasks
-from datetime import datetime
+from random import choice
 
 # Initialize the Bot with command prefix and intents
 intents = disnake.Intents.default()
@@ -39,29 +39,27 @@ async def on_ready():
 
     # Start the tasks
     update_status.start()
-    update_all_highscores.start()
 
     # Log a message to the console
     logger.info(f'Logged on as {bot.user} with {bot.shard_count} shards!')
+
+
+# Load Cogs On Start
+for cog_file in settings.COGS_DIR.glob('*.py'):
+    cog_name = f"cogs.{cog_file.stem}"
+    try:
+        bot.load_extension(cog_name)
+        logger.debug(f"Loaded cog: {cog_name}")
+    except Exception as e:
+        logger.error(f"Failed to load cog: {cog_name}\n{e}")
 
 
 # Task to update the bot's status every 30 minutes
 @tasks.loop(minutes=30)
 async def update_status():
     status_list = ["/help"]
-    activity = disnake.Game(name='/help')
+    activity = disnake.Game(name=choice(status_list))
     await bot.change_presence(activity=activity, status=disnake.Status.online)
-
-
-highscore_change_timestamp = 0
-
-
-# Task to update all highscores every 60 minutes
-@tasks.loop(minutes=60)
-async def update_all_highscores():
-    db.update_all_highscores()
-    global highscore_change_timestamp  # Use the global variable
-    highscore_change_timestamp = datetime.now().timestamp()
 
 
 # Event listener for when a message is sent
@@ -145,301 +143,6 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-# Command to add a channel
-@bot.slash_command(description='Enables the counting function in XYZ channel.')
-@commands.has_permissions(administrator=True)
-async def enable(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /enable {channel.id} ({interaction.id})")
-
-        if db.check_channel(str(channel.id)):
-            embed = disnake.Embed(
-                title="Sorry!",
-                description=f"Channel <#{channel.id}> is already a counting channel.",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            await interaction.send(embed=embed, ephemeral=True)
-            return
-
-        db.add_channel(str(channel.id))
-        embed = disnake.Embed(
-            title="Channel Added",
-            description=f"Channel <#{channel.id}> successfully added!",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        await interaction.send(embed=embed, ephemeral=True)
-    except Exception as e:
-        logger.error(f"Error when adding channel: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# Command to remove a channel
-@bot.slash_command(description='Disables the counting function in XYZ channel.')
-@commands.has_permissions(administrator=True)
-async def disable(interaction: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /disable {channel.id} ({interaction.id})")
-
-        if not db.check_channel(str(channel.id)):
-            embed = disnake.Embed(
-                title="Sorry!",
-                description=f"Channel <#{channel.id}> is not a counting channel.",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            await interaction.send(embed=embed, ephemeral=True)
-            return
-
-        db.remove_channel(str(channel.id))
-        embed = disnake.Embed(
-            title="Channel Removed",
-            description=f"Channel <#{channel.id}> successfully removed!",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        embed.set_footer(text="Your thoughts? Use /feedback to share!")
-        await interaction.send(embed=embed, ephemeral=True)
-    except Exception as e:
-        logger.error(f"Error when removing channel: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# Command to show the highscore
-@bot.slash_command(description='Show the highscore of the current channel.')
-async def highscore(interaction: disnake.ApplicationCommandInteraction):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /highscore ({interaction.id})")
-
-        # Check if the channel is allowed for counting
-        if not await db.is_channel_allowed(interaction):
-            embed = disnake.Embed(
-                title="Sorry!",
-                description=f"This channel is not activated for counting.",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            await interaction.send(embed=embed, ephemeral=True)
-            return
-
-        # Get the current highscore from the database
-        current_highscore = db.get_highscore(interaction.channel.id)
-        embed = disnake.Embed(
-            title="Highscore",
-            description=(f"The current highscore is `{current_highscore}`"
-                         f"\nLast automatic change: <t:{int(highscore_change_timestamp)}:R>"),
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        embed.set_footer(text="The highscore is updated every 60 minutes.")
-        await interaction.send(embed=embed, ephemeral=True)
-    # Catch any exceptions and send an error message
-    except Exception as e:
-        logger.error(f"Error when getting highscore: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# Command to reset the highscore
-@bot.slash_command(description='Reset the highscore of the current channel.')
-@commands.has_permissions(administrator=True)
-async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /reset_highscore ({interaction.id})")
-
-        # Check if the channel is allowed for counting
-        if not await db.is_channel_allowed(interaction):
-            embed = disnake.Embed(
-                title="Sorry!",
-                description=f"This channel is not activated for counting.",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            await interaction.send(embed=embed, ephemeral=True)
-            return
-
-        # Reset the highscore in the database
-        db.update_highscore(interaction.channel.id, 0)
-        embed = disnake.Embed(
-            title="Highscore Reset",
-            description=f"Highscore successfully reset!",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        embed.set_footer(text="Your thoughts? Use /feedback to share!")
-        await interaction.send(embed=embed)
-    # Catch any exceptions and send an error message
-    except Exception as e:
-        logger.error(f"Error when resetting highscore: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# Slash command to send feedback to a very specific channel in a very specific server
-@bot.slash_command(description='Send feedback to the developers.')
-async def feedback(
-        interaction: disnake.ApplicationCommandInteraction,
-        feedback: str = commands.param(description="Your feedback message.")
-):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /feedback ({interaction.id})")
-
-        # Get the feedback channel
-        feedback_channel = bot.get_channel(settings.FEEDBACK_CHANNEL_ID)
-
-        # Send the feedback to the feedback channel
-        embed = disnake.Embed(
-            title="New Feedback",
-            description=f"**User:** {interaction.author.mention}\n\n{feedback}",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        await feedback_channel.send(embed=embed)
-
-        # Send a confirmation message to the user
-        embed = disnake.Embed(
-            title="Feedback Sent",
-            description="Your feedback has been sent successfully!",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    except Exception as e:
-        logger.error(f"Error when sending feedback: {e}")
-        await interaction.response.send_message(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# leaderboard command
-@bot.slash_command(description='Show the leaderboard information of various things.')
-async def leaderboard(
-        interaction: disnake.ApplicationCommandInteraction,
-        action: str = commands.param(choices=["all servers", "all users", "current channel"]),
-):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /leaderboard [{action}] ({interaction.id})")
-
-        # Get Top 10 highscore of all channels avaliable in the db
-        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
-        if action == "all servers":
-            embed = disnake.Embed(
-                title="Server Leaderboard",
-                description="",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            for i, (channel_id, highscore) in enumerate(db.get_top_channel_highscores()):
-                channel = bot.get_channel(int(channel_id))
-                if i == 0:
-                    embed.description += f"🥇 {channel.guild.name} - Count: `{highscore}`\n"
-                elif i == 1:
-                    embed.description += f"🥈 {channel.guild.name} - Count: `{highscore}`\n"
-                elif i == 2:
-                    embed.description += f"🥉 {channel.guild.name} - Count: `{highscore}`\n"
-                else:
-                    embed.description += f"**#{i + 1}** {channel.guild.name} - Count: `{highscore}`\n"
-
-            embed.set_footer(text="Your thoughts? Use /feedback to share!")
-            await interaction.send(embed=embed, ephemeral=True)
-
-        # Get Top 10 highscore of the current channel
-        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
-        elif action == "current channel":
-            # Check if channel is a counting channel first
-            if not await db.is_channel_allowed(interaction):
-                embed = disnake.Embed(
-                    title="Sorry!",
-                    description=f"This channel is not activated for counting.",
-                    color=disnake.Colour(settings.EMBED_COLOR)
-                )
-                await interaction.send(embed=embed, ephemeral=True)
-                return
-
-            embed = disnake.Embed(
-                title="Channel Leaderboard",
-                description="",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            for i, (user_id, count) in enumerate(db.get_top_user_highscores(channel_id=interaction.channel.id)):
-                if i == 0:
-                    embed.description += f"🥇 <@{user_id}> - Count: `{count}`\n"
-                elif i == 1:
-                    embed.description += f"🥈 <@{user_id}> - Count: `{count}`\n"
-                elif i == 2:
-                    embed.description += f"🥉 <@{user_id}> - Count: `{count}`\n"
-                else:
-                    embed.description += f"**#{i + 1}** <@{user_id}> - Count: `{count}`\n"
-
-            embed.set_footer(text="Your thoughts? Use /feedback to share!")
-            await interaction.send(embed=embed, ephemeral=True)
-
-        # Get Top 10 highscore of all users : get_top_users()
-        # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
-        elif action == "all users":
-            embed = disnake.Embed(
-                title="User Leaderboard",
-                description="",
-                color=disnake.Colour(settings.EMBED_COLOR)
-            )
-            for i, (user_id, count) in enumerate(db.get_top_users()):
-                if i == 0:
-                    embed.description += f"🥇 <@{user_id}> - Count: `{count}`\n"
-                elif i == 1:
-                    embed.description += f"🥈 <@{user_id}> - Count: `{count}`\n"
-                elif i == 2:
-                    embed.description += f"🥉 <@{user_id}> - Count: `{count}`\n"
-                else:
-                    embed.description += f"**#{i + 1}** <@{user_id}> - Count: `{count}`\n"
-
-            embed.set_footer(text="Your thoughts? Use /feedback to share!")
-            await interaction.send(embed=embed, ephemeral=True)
-
-    # Catch any exceptions and send an error message
-    except Exception as e:
-        logger.error(f"Error when getting highscore: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
-# Command to eval a number
-@bot.slash_command(description='Evaluate a number.')
-async def eval_number(interaction: disnake.ApplicationCommandInteraction, expression: str):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /eval_number {expression} ({interaction.id})")
-
-        # Attempt to evaluate the number
-        evaluated_number = eval.safe_eval(expression)
-        embed = disnake.Embed(
-            title="Evaluated Number",
-            description=f"The evaluated number is `{evaluated_number}`.",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        await interaction.send(embed=embed, ephemeral=True)
-
-    except Exception as e:
-        # Message that eval doesn't know this number
-        embed = disnake.Embed(
-            title="Error",
-            description=f"Eval doesn't know this number.\n"
-                        f"Supported operations: +, -, *, /, **, sin(), cos, tan, log, log10, sqrt, exp, pi, e",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        await interaction.send(embed=embed, ephemeral=True)
-
-
-# Command for help
-@bot.slash_command(description='Show the help message.')
-async def help(interaction: disnake.ApplicationCommandInteraction):
-    try:
-        logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /help ({interaction.id})")
-
-        embed = disnake.Embed(
-            title="SillyCounting Help",
-            description="[] = Needed argument\n() = Optional argument",
-            color=disnake.Colour(settings.EMBED_COLOR)
-        )
-        embed.add_field(name="`/help`", value="Show this help message")
-        embed.add_field(name="`/enable [channel]`", value="Enable counting in the current channel")
-        embed.add_field(name="`/disable [channel]`", value="Disable counting in the current channel")
-        embed.add_field(name="`/highscore`", value="Show the current highscore")
-        embed.add_field(name="`/reset_highscore`", value="Reset the highscore")
-        embed.add_field(name="`/leaderboard [action]`", value="Show some leaderboard information")
-        embed.add_field(name="`/feedback [feedback]`", value="Send feedback to the developers")
-        embed.add_field(name="`/eval_number [expression]`", value="Evaluate a number")
-        await interaction.send(embed=embed, ephemeral=True)
-
-    except Exception as e:
-        logger.error(f"Error when showing help: {e}")
-        await interaction.send(embed=error.create_error_embed(str(e)), ephemeral=True)
-
-
 # Event listener for when a message is deleted
 @bot.event
 async def on_message_delete(message):
@@ -496,6 +199,7 @@ async def on_message_edit(before, after):
             color=disnake.Colour(settings.EMBED_COLOR)
         )
         await before.channel.send(embed=embed)
+
 
 # Slash command error handler
 @bot.event

@@ -1,7 +1,9 @@
 import os
 import logging
+from colorlog import ColoredFormatter
 from dotenv import load_dotenv
 from logging.config import dictConfig
+import pathlib
 
 load_dotenv()
 
@@ -13,6 +15,9 @@ COMMAND_PREFIX = os.getenv('COMMAND_PREFIX')
 EMBED_COLOR = int(os.getenv('EMBED_COLOR'), 16)
 FEEDBACK_CHANNEL_ID = int(os.getenv('FEEDBACK_CHANNEL_ID'))
 
+# Define directories
+BASE_DIR = pathlib.Path(__file__).parent
+COGS_DIR = BASE_DIR / 'cogs'
 
 # Make sure ./logs directory exists
 if not os.path.exists('logs'):
@@ -29,7 +34,15 @@ LOGGING_CONFIG = {
         },
         # Define the default formatter
         'default': {
-            'format': "%(levelname)-10s - %(name)-15s : %(message)s",
+            '()': 'colorlog.ColoredFormatter',
+            'format': "%(log_color)s%(levelname)-10s - %(name)-15s : %(message)s",
+            'log_colors': {
+                'DEBUG': 'cyan',
+                'INFO': 'green',
+                'WARNING': 'yellow',
+                'ERROR': 'red',
+                'CRITICAL': 'red,bg_white',
+            },
         },
     },
     'handlers': {
@@ -57,6 +70,10 @@ LOGGING_CONFIG = {
         },
         'database': {
             'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'commands': {
+            'handlers': ['console'],
             'level': 'INFO',
         },
     },

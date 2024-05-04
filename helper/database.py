@@ -84,7 +84,7 @@ def setup_database():
         columns = [column[1] for column in cursor.fetchall()]
         required_columns = ["user_id", "username"]
         for column in required_columns:
-            logger.info(f"Checking for column {column}")
+            logger.debug(f"Checking for column {column}")
             if column not in columns:
                 if column == "user_id":
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {column} INTEGER")
@@ -96,7 +96,7 @@ def setup_database():
         columns = [column[1] for column in cursor.fetchall()]
         required_columns = ["channel_id", "count", "last_user_id", "highscore"]
         for column in required_columns:
-            logger.info(f"Checking for column {column}")
+            logger.debug(f"Checking for column {column}")
             if column not in columns:
                 if column == "highscore":
                     cursor.execute(f"ALTER TABLE channels ADD COLUMN {column} INTEGER")
@@ -112,7 +112,7 @@ def setup_database():
         columns = [column[1] for column in cursor.fetchall()]
         required_columns = ["channeluser_id", "user_id", "channel_id", "count"]
         for column in required_columns:
-            logger.info(f"Checking for column {column}")
+            logger.debug(f"Checking for column {column}")
             if column not in columns:
                 if column == "channeluser_id":
                     cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} INTEGER PRIMARY KEY AUTOINCREMENT")
