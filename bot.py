@@ -1,6 +1,6 @@
 # Description: Main file for the bot. Contains the main logic for the bot.
 # Created by: SillySoon https://github.com/SillySoon
-from datetime import datetime
+
 
 # Importing necessary libraries
 import disnake
@@ -9,8 +9,10 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 import helper.database as db
 import helper.error as error
+import helper.eval as eval
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -92,18 +94,27 @@ async def update_all_highscores():
 # Event listener for when a message is sent
 @bot.event
 async def on_message(message):
-    if message.author == bot.user or not message.content.isdigit():
+    if message.author == bot.user:
         await bot.process_commands(message)
         return
 
     if await db.is_channel_allowed(message):
-        current_count, last_user_id = db.get_current_count(message.channel.id)
-
-        print(f"[{message.channel.id}] {message.author.id}: {message.content}")
-        logger.info(f"[{message.channel.id}] {message.author.id}: {message.content}")
+        try:
+            # Attempt to evaluate the content of the message as a math expression
+            message_number = eval.safe_eval(message.content)
+            if isinstance(message_number, float):
+                message_number = round(message_number)  # Round the result to the nearest integer for counting
+        except:
+            # Fallback if the message is not a valid expression, ignore it
+            await bot.process_commands(message)
+            return
 
         try:
-            message_number = int(message.content)
+            current_count, last_user_id = db.get_current_count(message.channel.id)
+
+            print(f"[{message.channel.id}] {message.author.id}: {message.content} ({message_number})")
+            logger.info(f"[{message.channel.id}] {message.author.id}: {message.content} ({message_number})")
+
             if message_number == current_count + 1 and str(message.author.id) != last_user_id:
                 # Update the count in the database
                 db.update_count(message.channel.id, message_number, message.author.id)
@@ -433,52 +444,59 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
 # Event listener for when a message is deleted
 @bot.event
 async def on_message_delete(message):
-    if message.author == bot.user or not message.content.isdigit():
+    if message.author == bot.user:
         return
+
+    try:
+        evaluated_message = eval.safe_eval(message.content)
+        if not isinstance(evaluated_message, (int, float)):  # Check if it's a number
+            return
+    except Exception:
+        return  # Ignore if the message content is not a valid expression or causes an error
 
     # Check if the channel is allowed for counting
     if await db.is_channel_allowed(message):
-        try:
-            current_count, last_user_id = db.get_current_count(message.channel.id)
+        current_count, last_user_id = db.get_current_count(message.channel.id)
 
-            # Check if the message matched the current count
-            if not int(message.content) == current_count:
-                return  # Ignore if the message was not the current count
+        # Check if the message matched the current count
+        if not evaluated_message == current_count:
+            return  # Ignore if the message was not the current count
 
-            embed = disnake.Embed(
-                title="Number Deleted",
-                description=f"<@{message.author.id}> deleted a message!\nCurrent count is `{current_count}`.",
-                color=disnake.Colour(embed_color)
-            )
-            await message.channel.send(embed=embed)
-        except ValueError:
-            pass
+        embed = disnake.Embed(
+            title="Number Deleted",
+            description=f"<@{message.author.id}> deleted a message!\nCurrent count is `{current_count}`.",
+            color=disnake.Colour(embed_color)
+        )
+        await message.channel.send(embed=embed)
 
 
 # Event listener for when a message is edited
 @bot.event
 async def on_message_edit(before, after):
-    if before.author == bot.user or not before.content.isdigit():
+    if before.author == bot.user:
         return
+
+    try:
+        evaluated_before = eval.safe_eval(before.content)
+        if not isinstance(evaluated_before, (int, float)):  # Check if it's a number
+            return
+    except Exception:
+        return  # Ignore if the before message content is not a valid expression or causes an error
 
     # Check if the channel is allowed for counting
     if await db.is_channel_allowed(before):
-        try:
-            current_count, last_user_id = db.get_current_count(before.channel.id)
+        current_count, last_user_id = db.get_current_count(before.channel.id)
 
-            # Check if the message matched the current count
-            if not int(before.content) == current_count:
-                return  # Ignore if the message was not the current count
+        # Check if the message matched the current count
+        if not evaluated_before == current_count:
+            return  # Ignore if the message was not the current count
 
-            embed = disnake.Embed(
-                title="Number Edited",
-                description=f"<@{before.author.id}> edited a message!\nCurrent count is `{current_count}`.",
-                color=disnake.Colour(embed_color)
-            )
-            await before.channel.send(embed=embed)
-        except ValueError:
-            pass
-
+        embed = disnake.Embed(
+            title="Number Edited",
+            description=f"<@{before.author.id}> edited a message!\nCurrent count is `{current_count}`.",
+            color=disnake.Colour(embed_color)
+        )
+        await before.channel.send(embed=embed)
 
 # Slash command error handler
 @bot.event
