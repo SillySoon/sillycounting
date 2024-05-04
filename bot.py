@@ -43,6 +43,7 @@ log_handler.setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
+logger.propagate = False  # Prevent logs from propagating to the root logger
 
 # Use `logger` to log messages
 logger.info("[START] Bot is starting up...")
