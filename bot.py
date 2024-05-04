@@ -394,6 +394,10 @@ async def on_message_delete(message):
         try:
             current_count, last_user_id = db.get_current_count(message.channel.id)
 
+            # Check if the message matched the current count
+            if not int(message.content) == current_count:
+                return # Ignore if the message was not the current count
+
             embed = disnake.Embed(
                 title="Number Deleted",
                 description=f"<@{message.author.id}> deleted a message!\nCurrent count is `{current_count}`.",
@@ -413,6 +417,10 @@ async def on_message_edit(before, after):
     if await db.is_channel_allowed(before):
         try:
             current_count, last_user_id = db.get_current_count(before.channel.id)
+
+            # Check if the message matched the current count
+            if not int(before.content) == current_count:
+                return # Ignore if the message was not the current count
 
             embed = disnake.Embed(
                 title="Number Edited",
