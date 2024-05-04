@@ -1,33 +1,26 @@
 # Description: Main file for the bot. Contains the main logic for the bot.
 # Created by: SillySoon https://github.com/SillySoon
 
+# import own modules
+import helper.database as db
+import helper.error as error
+import helper.eval as eval
+import settings
+
 
 # Importing necessary libraries
 import disnake
 from disnake.ext import commands, tasks
 import logging
 from logging.handlers import TimedRotatingFileHandler
-import os
-from dotenv import load_dotenv
 from datetime import datetime
-import helper.database as db
-import helper.error as error
-import helper.eval as eval
-
-# Load the environment variables from the .env file
-load_dotenv()
-
-# Accessing the environment variables
-discord_token = os.getenv('DISCORD_TOKEN')
-command_prefix = os.getenv('COMMAND_PREFIX')
-embed_color = int(os.getenv('EMBED_COLOR'), 16)
-feedback_channel_id = int(os.getenv('FEEDBACK_CHANNEL_ID'))
+import os
 
 # Initialize the Bot with command prefix and intents
 intents = disnake.Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = commands.AutoShardedBot(command_prefix=command_prefix, intents=intents)
+bot = commands.AutoShardedBot(command_prefix=settings.COMMAND_PREFIX, intents=intents)
 
 # Setup basic configuration for logging
 os.makedirs('./logs', exist_ok=True)  # Ensure the directory for logs exists
@@ -133,7 +126,7 @@ async def on_message(message):
                     embed = disnake.Embed(
                         title="You cannot count twice in a row!",
                         description="Starting from `1` again.",
-                        color=disnake.Colour(embed_color)
+                        color=disnake.Colour(settings.EMBED_COLOR)
                     )
                     embed.set_footer(text="Your thoughts? Use /feedback to share!")
                     await message.reply(embed=embed)
@@ -143,7 +136,7 @@ async def on_message(message):
                     embed = disnake.Embed(
                         title=f"The number was {current_count + 1}",
                         description=f"Starting from `1` again.",
-                        color=disnake.Colour(embed_color)
+                        color=disnake.Colour(settings.EMBED_COLOR)
                     )
                     embed.set_footer(text="Your thoughts? Use /feedback to share!")
                     await message.reply(embed=embed)
@@ -155,7 +148,7 @@ async def on_message(message):
                     embed = disnake.Embed(
                         title="Better luck next time!",
                         description=f"Current highscore is {current_highscore}. Try to beat it!",
-                        color=disnake.Colour(embed_color)
+                        color=disnake.Colour(settings.EMBED_COLOR)
                     )
                     await message.channel.send(embed=embed)
                     return
@@ -164,7 +157,7 @@ async def on_message(message):
                 embed = disnake.Embed(
                     title="New highscore!",
                     description=f"We reached a highscore of `{current_count}`!",
-                    color=disnake.Colour(embed_color)
+                    color=disnake.Colour(settings.EMBED_COLOR)
                 )
                 await message.channel.send(embed=embed)
         except ValueError:
@@ -184,7 +177,7 @@ async def enable(interaction: disnake.ApplicationCommandInteraction, channel: di
             embed = disnake.Embed(
                 title="Sorry!",
                 description=f"Channel <#{channel.id}> is already a counting channel.",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             await interaction.send(embed=embed, ephemeral=True)
             return
@@ -193,7 +186,7 @@ async def enable(interaction: disnake.ApplicationCommandInteraction, channel: di
         embed = disnake.Embed(
             title="Channel Added",
             description=f"Channel <#{channel.id}> successfully added!",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await interaction.send(embed=embed, ephemeral=True)
     except Exception as e:
@@ -212,7 +205,7 @@ async def disable(interaction: disnake.ApplicationCommandInteraction, channel: d
             embed = disnake.Embed(
                 title="Sorry!",
                 description=f"Channel <#{channel.id}> is not a counting channel.",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             await interaction.send(embed=embed, ephemeral=True)
             return
@@ -221,7 +214,7 @@ async def disable(interaction: disnake.ApplicationCommandInteraction, channel: d
         embed = disnake.Embed(
             title="Channel Removed",
             description=f"Channel <#{channel.id}> successfully removed!",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         embed.set_footer(text="Your thoughts? Use /feedback to share!")
         await interaction.send(embed=embed, ephemeral=True)
@@ -241,7 +234,7 @@ async def highscore(interaction: disnake.ApplicationCommandInteraction):
             embed = disnake.Embed(
                 title="Sorry!",
                 description=f"This channel is not activated for counting.",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             await interaction.send(embed=embed, ephemeral=True)
             return
@@ -252,7 +245,7 @@ async def highscore(interaction: disnake.ApplicationCommandInteraction):
             title="Highscore",
             description=(f"The current highscore is `{current_highscore}`"
                          f"\nLast automatic change: <t:{int(highscore_change_timestamp)}:R>"),
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         embed.set_footer(text="The highscore is updated every 60 minutes.")
         await interaction.send(embed=embed, ephemeral=True)
@@ -274,7 +267,7 @@ async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
             embed = disnake.Embed(
                 title="Sorry!",
                 description=f"This channel is not activated for counting.",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             await interaction.send(embed=embed, ephemeral=True)
             return
@@ -284,7 +277,7 @@ async def reset_highscore(interaction: disnake.ApplicationCommandInteraction):
         embed = disnake.Embed(
             title="Highscore Reset",
             description=f"Highscore successfully reset!",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         embed.set_footer(text="Your thoughts? Use /feedback to share!")
         await interaction.send(embed=embed)
@@ -304,13 +297,13 @@ async def feedback(
         logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /feedback ({interaction.id})")
 
         # Get the feedback channel
-        feedback_channel = bot.get_channel(feedback_channel_id)
+        feedback_channel = bot.get_channel(settings.FEEDBACK_CHANNEL_ID)
 
         # Send the feedback to the feedback channel
         embed = disnake.Embed(
             title="New Feedback",
             description=f"**User:** {interaction.author.mention}\n\n{feedback}",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await feedback_channel.send(embed=embed)
 
@@ -318,7 +311,7 @@ async def feedback(
         embed = disnake.Embed(
             title="Feedback Sent",
             description="Your feedback has been sent successfully!",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -342,7 +335,7 @@ async def leaderboard(
             embed = disnake.Embed(
                 title="Server Leaderboard",
                 description="",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             for i, (channel_id, highscore) in enumerate(db.get_top_channel_highscores()):
                 channel = bot.get_channel(int(channel_id))
@@ -366,7 +359,7 @@ async def leaderboard(
                 embed = disnake.Embed(
                     title="Sorry!",
                     description=f"This channel is not activated for counting.",
-                    color=disnake.Colour(embed_color)
+                    color=disnake.Colour(settings.EMBED_COLOR)
                 )
                 await interaction.send(embed=embed, ephemeral=True)
                 return
@@ -374,7 +367,7 @@ async def leaderboard(
             embed = disnake.Embed(
                 title="Channel Leaderboard",
                 description="",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             for i, (user_id, count) in enumerate(db.get_top_user_highscores(channel_id=interaction.channel.id)):
                 if i == 0:
@@ -395,7 +388,7 @@ async def leaderboard(
             embed = disnake.Embed(
                 title="User Leaderboard",
                 description="",
-                color=disnake.Colour(embed_color)
+                color=disnake.Colour(settings.EMBED_COLOR)
             )
             for i, (user_id, count) in enumerate(db.get_top_users()):
                 if i == 0:
@@ -427,7 +420,7 @@ async def eval_number(interaction: disnake.ApplicationCommandInteraction, expres
         embed = disnake.Embed(
             title="Evaluated Number",
             description=f"The evaluated number is `{evaluated_number}`.",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await interaction.send(embed=embed, ephemeral=True)
 
@@ -437,7 +430,7 @@ async def eval_number(interaction: disnake.ApplicationCommandInteraction, expres
             title="Error",
             description=f"Eval doesn't know this number.\n"
                         f"Supported operations: +, -, *, /, **, sin(), cos, tan, log, log10, sqrt, exp, pi, e",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await interaction.send(embed=embed, ephemeral=True)
 
@@ -451,7 +444,7 @@ async def help(interaction: disnake.ApplicationCommandInteraction):
         embed = disnake.Embed(
             title="SillyCounting Help",
             description="[] = Needed argument\n() = Optional argument",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         embed.add_field(name="`/help`", value="Show this help message")
         embed.add_field(name="`/enable [channel]`", value="Enable counting in the current channel")
@@ -492,7 +485,7 @@ async def on_message_delete(message):
         embed = disnake.Embed(
             title="Number Deleted",
             description=f"<@{message.author.id}> deleted a message!\nCurrent count is `{current_count}`.",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await message.channel.send(embed=embed)
 
@@ -521,7 +514,7 @@ async def on_message_edit(before, after):
         embed = disnake.Embed(
             title="Number Edited",
             description=f"<@{before.author.id}> edited a message!\nCurrent count is `{current_count}`.",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await before.channel.send(embed=embed)
 
@@ -533,7 +526,7 @@ async def on_slash_command_error(interaction: disnake.ApplicationCommandInteract
         embed = disnake.Embed(
             title="Permission Denied",
             description="You do not have the necessary permissions to use this command.",
-            color=disnake.Colour(embed_color)
+            color=disnake.Colour(settings.EMBED_COLOR)
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
     else:
@@ -544,4 +537,4 @@ async def on_slash_command_error(interaction: disnake.ApplicationCommandInteract
 
 
 # Bot starts running here
-bot.run(discord_token)
+bot.run(settings.DISCORD_TOKEN, reconnect=True)

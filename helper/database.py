@@ -1,15 +1,8 @@
 import sqlite3
 from sqlite3 import Connection
 from queue import Queue
-import os
-from dotenv import load_dotenv
 import logging
-
-# Load environment variables
-load_dotenv()
-
-# Database path from .env
-database_path = os.getenv('DATABASE_PATH')
+import settings
 
 # Configure logging for database operations
 logger = logging.getLogger(__name__)
@@ -30,7 +23,7 @@ class SQLiteConnectionPool:
 
 
 # Initialize the connection pool
-connection_pool = SQLiteConnectionPool(database_path)
+connection_pool = SQLiteConnectionPool(settings.DATABASE_PATH)
 
 
 # Create database connection
@@ -45,7 +38,7 @@ def close_connection(conn):
     connection_pool.release_connection(conn)
 
 
-# Setup the database
+# Set up the database
 def setup_database():
     """Set up the database and tables."""
     connection = create_connection()
@@ -132,7 +125,6 @@ def setup_database():
                     cursor.execute(f"ALTER TABLE channeluser ADD COLUMN {column} INTEGER")
                 connection.commit()
                 logger.info(f"[DATABASE] Column {column} added successfully.")
-
 
     except sqlite3.Error as e:
         logger.error(f"[DATABASE] Failed to create or alter table: {e}")
@@ -226,6 +218,7 @@ def check_channel(channel_id):
     finally:
         close_connection(conn)
     return False  # Default to False if not found
+
 
 # Check a user is in the database
 def check_user(user_id):
@@ -377,7 +370,7 @@ def update_highscore(channel_id, new_highscore):
         close_connection(conn)
 
 
-# update all highscores, if current count is higher then highscore, update highscore
+# update all highscores, if current count is higher than highscore, update highscore
 def update_all_highscores():
     logging.info("[BOT] Requests: Update all highscores")
     conn = create_connection()
