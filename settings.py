@@ -51,29 +51,36 @@ LOGGING_CONFIG = {
             'class': 'logging.StreamHandler',
             'formatter': 'default',
         },
-        'file': {
+        'file_bot': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'formatter': 'verbose',
             'filename': 'logs/bot.log',
             'mode': 'w',
         },
+        'file_user': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'formatter': 'verbose',
+            'filename': 'logs/user.log',
+            'mode': 'w',
+        },
     },
     'loggers': {
         'bot': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_user'],
             'level': 'INFO',
         },
         'disnake': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file_bot'],
             'level': 'INFO',
         },
         'database': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file_bot'],
             'level': 'INFO',
         },
         'commands': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_user'],
             'level': 'INFO',
         },
     },
