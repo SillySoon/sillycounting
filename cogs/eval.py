@@ -30,7 +30,8 @@ class Eval(commands.Cog):
             evaluated_number = eval.safe_eval(expression)
             embed = disnake.Embed(
                 title="Evaluated Number",
-                description=f"The evaluated number is `{evaluated_number}`.",
+                description=f"Task: `{expression}`\nThe evaluated number is `{evaluated_number}` "
+                            f"and will be rounded by the bot to `{round(evaluated_number)}`.",
                 color=disnake.Colour(settings.EMBED_COLOR)
             )
             await interaction.send(embed=embed, ephemeral=True)
@@ -40,6 +41,7 @@ class Eval(commands.Cog):
             embed = disnake.Embed(
                 title="Error",
                 description=f"Eval doesn't know this number.\n"
+                            f"Task: `{expression}`\n"
                             f"Supported operations: +, -, *, /, **, sin(), cos, tan, log, log10, sqrt, exp, pi, e",
                 color=disnake.Colour(settings.EMBED_COLOR)
             )
