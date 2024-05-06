@@ -89,13 +89,13 @@ async def on_message(message):
                 # Update the count in the database
                 db.update_count(message.channel.id, message_number, message.author.id)
 
+                # Add a reaction to the message
+                await message.add_reaction(POSITIVE_EMOJI)
+
                 # Update user count
                 if not db.check_user(str(message.author.id)):
                     db.add_user(message.author.id)
                 db.update_user_count(message.channel.id, message.author.id)
-
-                # Add a reaction to the message
-                await message.add_reaction(POSITIVE_EMOJI)
             else:
                 if str(message.author.id) == last_user_id:
                     db.update_count(message.channel.id, 0, 0)

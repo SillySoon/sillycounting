@@ -145,6 +145,5 @@ dmypy.json
 cython_debug/
 
 # db file
-bot_database.db
 /logs/
 .idea
