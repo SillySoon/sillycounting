@@ -27,7 +27,7 @@ class Leaderboard(commands.Cog):
             logger.info(
                 f"[{interaction.channel.id}] {interaction.author.id}: /leaderboard [{action}] ({interaction.id})")
 
-            # Get Top 10 highscore of all channels avaliable in the db
+            # Get Top 10 highscore of all channels available in the db
             # Add Emotes to 1st, 2nd, and 3rd place (🥇, 🥈, 🥉)
             if action == "all servers":
                 embed = disnake.Embed(

@@ -26,6 +26,7 @@ class Feedback(commands.Cog):
             logger.info(f"[{interaction.channel.id}] {interaction.author.id}: /feedback ({interaction.id})")
 
             # Get the feedback channel
+            bot = self.bot
             feedback_channel = bot.get_channel(settings.FEEDBACK_CHANNEL_ID)
 
             # Send the feedback to the feedback channel
