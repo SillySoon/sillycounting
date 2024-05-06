@@ -9,11 +9,16 @@ load_dotenv()
 
 # Accessing the environment variables
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-DATABASE_PATH = os.getenv('DATABASE_PATH')
 COMMAND_PREFIX = os.getenv('COMMAND_PREFIX')
-
 EMBED_COLOR = int(os.getenv('EMBED_COLOR'), 16)
 FEEDBACK_CHANNEL_ID = int(os.getenv('FEEDBACK_CHANNEL_ID'))
+
+# Database
+DATABASE_NAME = os.getenv('DATABASE_NAME')
+DATABASE_USER = os.getenv('DATABASE_USER')
+DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
+DATABASE_HOST = os.getenv('DATABASE_HOST')
+DATABASE_PORT = os.getenv('DATABASE_PORT')
 
 # Define directories
 BASE_DIR = pathlib.Path(__file__).parent
