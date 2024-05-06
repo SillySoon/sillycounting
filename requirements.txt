@@ -1,4 +1,5 @@
 disnake
 python-dotenv
+mysql-connector-python
 logging
 colorlog
