@@ -255,36 +255,38 @@ def add_user(user_id):
 
 # Update the count for a user in a channel, count is always + 1
 def update_user_count(channel_id, user_id):
+    logger = logging.getLogger('database')
     logger.info(f"{channel_id} requests: update user count for {user_id}")
     conn = create_connection()
-    sql = '''
-        SELECT count
-        FROM channeluser
-        WHERE user_id = %s
-        AND channel_id = %s
-    '''
     try:
-        cur = conn.cursor()
-        cur.execute(sql, (user_id, channel_id))
-        row = cur.fetchone()
-        if row:
-            new_count = row[0] + 1
-            sql = '''
-                UPDATE channeluser
-                SET count = %s
-                WHERE user_id = %s
-                AND channel_id = %s
+        with conn.cursor() as cur:
+            # First, attempt to fetch the current count
+            select_sql = '''
+                SELECT count
+                FROM channeluser
+                WHERE user_id = %s AND channel_id = %s
             '''
-            cur.execute(sql, (new_count, user_id, channel_id))
-            conn.commit()
-        else:
-            sql = '''
-                INSERT INTO channeluser(user_id, channel_id, count)
-                VALUES(%s, %s, 1)
-            '''
-            cur.execute(sql, (user_id, channel_id))
+            cur.execute(select_sql, (user_id, channel_id))
+            row = cur.fetchone()
+            cur.fetchall()  # Clear any remaining results from the cursor
+
+            if row:
+                new_count = row[0] + 1
+                update_sql = '''
+                    UPDATE channeluser
+                    SET count = %s
+                    WHERE user_id = %s AND channel_id = %s
+                '''
+                cur.execute(update_sql, (new_count, user_id, channel_id))
+            else:
+                insert_sql = '''
+                    INSERT INTO channeluser (user_id, channel_id, count)
+                    VALUES (%s, %s, 1)
+                '''
+                cur.execute(insert_sql, (user_id, channel_id))
             conn.commit()
     except Exception as e:
+        conn.rollback()
         logger.error(f"Failed to update user count: {e}")
         print(e)
     finally:
