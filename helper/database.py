@@ -255,7 +255,6 @@ def add_user(user_id):
 
 # Update the count for a user in a channel, count is always + 1
 def update_user_count(channel_id, user_id):
-    logger = logging.getLogger('database')
     logger.info(f"{channel_id} requests: update user count for {user_id}")
     conn = create_connection()
     try:
